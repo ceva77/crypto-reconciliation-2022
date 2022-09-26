@@ -4,6 +4,7 @@ scripts/internal_transfers/__pycache__
 .env
 .history
 .hypothesis/
+.vscode/
 build/
 reports/
 output_files/

@@ -104,6 +104,9 @@ def get_token_transfers_with_lending_pool(from_address, pool_address, chain="pol
         datetime.fromtimestamp(int(timestamp))
         for timestamp in lending_pool_transfers["timeStamp"]
     ]
+    lending_pool_transfers["amount"] = [int(amount) for amount in lending_pool_transfers["amount"]]
+    lending_pool_transfers["tokenDecimal"] = [int(decimal) for decimal in lending_pool_transfers['tokenDecimal']]
+    lending_pool_transfers["amount_fixed"] = lending_pool_transfers["amount"] / 10**lending_pool_transfers['tokenDecimal']
     return lending_pool_transfers
 
 
@@ -119,10 +122,11 @@ def get_raw_transfers_with_lending_pool(from_address, pool_address, chain="polyg
 
     # fill out the missing columns
     lending_pool_txs_with_raw_eth['transferTo'] = lending_pool_txs_with_raw_eth['to']
-    lending_pool_txs_with_raw_eth['amount'] = lending_pool_txs_with_raw_eth['value']
+    lending_pool_txs_with_raw_eth['amount'] = [int(value) for value in lending_pool_txs_with_raw_eth['value']]
     lending_pool_txs_with_raw_eth['tokenName'] = CHAINS[chain]['base_token_name']
     lending_pool_txs_with_raw_eth['tokenSymbol'] = CHAINS[chain]['base_token_symbol']
-    lending_pool_txs_with_raw_eth['tokenDecimal'] = CHAINS[chain]['base_token_decimals']
+    lending_pool_txs_with_raw_eth['tokenDecimal'] = int(CHAINS[chain]['base_token_decimals'])
+    lending_pool_txs_with_raw_eth['amount_fixed'] = lending_pool_txs_with_raw_eth['amount'] / 10**lending_pool_txs_with_raw_eth['tokenDecimal']
     lending_pool_txs_with_raw_eth['input_deprecated'] = lending_pool_txs_with_raw_eth['input'] 
     lending_pool_txs_with_raw_eth['datetime'] = [
         datetime.fromtimestamp(int(timestamp))
@@ -154,5 +158,5 @@ def main(verbose=False):
 if __name__ == "__main__":
     lending_pool_transfers = main(verbose=True)
     lending_pool_transfers.to_csv(
-        "output_files/lending_pool_transfers.csv", index=False
+        "output_files/lending/lending_pool_transfers.csv", index=False
     )

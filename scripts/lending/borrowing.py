@@ -52,11 +52,11 @@ def get_borrows_and_repayments(lending_pool_transfers):
         # loop over all the transactions for this token
         for _, tx in temp_txs.iterrows():
             # increment borrows, withdrawals, and accrued interest
-            amount = tx["amount"]
+            amount = tx["amount_fixed"]
             if tx["action"] == "borrow":
-                temp_borrows += int(amount)
+                temp_borrows += amount
             elif tx["action"] == "repay":
-                temp_repayments += int(amount)
+                temp_repayments += amount
             temp_interest = max(temp_repayments - temp_borrows, 0)
             row = pd.DataFrame(
                 [
@@ -65,7 +65,7 @@ def get_borrows_and_repayments(lending_pool_transfers):
                         "hash": tx["hash"],
                         "datetime": tx["datetime"],
                         "action": tx["action"],
-                        "amount": tx["amount"],
+                        "amount": amount,
                         "total_borrows": temp_borrows,
                         "total_repayments": temp_repayments,
                         "total_interest_paid": temp_interest,
@@ -97,9 +97,9 @@ def split_interest_transactions(borrows_and_repayments):
             # if interest was gained in this tx...
             if repayment["total_interest_paid"] > prev_interest:
                 # calculate interest and principal repayment
-                this_interest = int(repayment["total_interest_paid"]) - prev_interest
-                this_principal = int(repayment["amount"]) - this_interest
-                prev_interest = int(repayment["total_interest_paid"])
+                this_interest = repayment["total_interest_paid"] - prev_interest
+                this_principal = repayment["amount"] - this_interest
+                prev_interest = repayment["total_interest_paid"]
 
                 # construct two tx's for interest and principal repayment
                 txs = pd.DataFrame(
@@ -183,4 +183,4 @@ if __name__ == "__main__":
     borrows_and_repayments.to_csv(
         "output_files/lending/borrows_and_repayments.csv", index=False
     )
-    split_txs.to_csv("output_files/lending/split_interest_transactions_borrows.csv", index=False)
+    split_txs.to_csv("output_files/lending/split_interest_txs_borrows.csv", index=False)

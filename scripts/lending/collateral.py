@@ -46,28 +46,16 @@ def get_deposits_and_withdrawals(lending_pool_transfers):
         ]
 
         # for each transaction compute the amount in the pool and the interest withdrawn
-        temp_balances = pd.DataFrame(
-            columns=[
-                "tokenSymbol",
-                "hash",
-                "datetime",
-                "action",
-                "amount",
-                "total_deposits",
-                "total_withdraws",
-                "total_interest_received",
-            ]
-        )
         temp_deposits = 0
         temp_withdraws = 0
         # loop over all the transactions for this token
         for _, tx in temp_txs.iterrows():
             # increment deposits, withdrawals, and accrued interest
-            amount = tx["amount"]
+            amount = tx["amount_fixed"]
             if tx["action"] == "deposit":
-                temp_deposits += int(amount)
+                temp_deposits += amount
             elif tx["action"] == "withdraw":
-                temp_withdraws += int(amount)
+                temp_withdraws += amount
             temp_interest = max(temp_withdraws - temp_deposits, 0)
             row = pd.DataFrame(
                 [
@@ -76,7 +64,7 @@ def get_deposits_and_withdrawals(lending_pool_transfers):
                         "hash": tx["hash"],
                         "datetime": tx["datetime"],
                         "action": tx["action"],
-                        "amount": tx["amount"],
+                        "amount": amount,
                         "total_deposits": temp_deposits,
                         "total_withdraws": temp_withdraws,
                         "total_interest_received": temp_interest,
@@ -108,9 +96,9 @@ def split_interest_transactions(deposits_and_withdrawals):
             # if interest was gained in this tx...
             if withdraw["total_interest_received"] > prev_interest:
                 # calculate interest and principal withdraw
-                this_interest = int(withdraw["total_interest_received"]) - prev_interest
-                this_principal = int(withdraw["amount"]) - this_interest
-                prev_interest = int(withdraw["total_interest_received"])
+                this_interest = withdraw["total_interest_received"] - prev_interest
+                this_principal = withdraw["amount"] - this_interest
+                prev_interest = withdraw["total_interest_received"]
 
                 # construct two tx's for interest and principal withdrawals
                 txs = pd.DataFrame(
@@ -189,6 +177,6 @@ def main(verbose=False):
 if __name__ == "__main__":
     deposits_and_withdrawals, split_txs = main(verbose=True)
     deposits_and_withdrawals.to_csv(
-        "output_files/deposits_and_withdrawals.csv", index=False
+        "output_files/lending/deposits_and_withdrawals.csv", index=False
     )
-    split_txs.to_csv("output_files/split_interest_transactions.csv", index=False)
+    split_txs.to_csv("output_files/lending/split_interest_txs_collateral.csv", index=False)

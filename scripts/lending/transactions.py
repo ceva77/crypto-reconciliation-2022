@@ -21,14 +21,13 @@ def get_normal_transactions_by_address(
     url = url.format(base_url, address, start_block, end_block, api_key)
 
     response = requests.get(url).json()
-    if response["result"]:
+    if response["status"] == "1":
         df = pd.DataFrame(response["result"])
         columns_str_to_int = [
             "blockNumber",
             "timeStamp",
             "nonce",
             "transactionIndex",
-            "value",
             "gas",
             "gasPrice",
             "isError",
@@ -38,11 +37,12 @@ def get_normal_transactions_by_address(
             "confirmations",
         ]
         for column in columns_str_to_int:
-            df[column] = pd.to_numeric(df[column])
+            df[column] = df[column].astype(int)
 
         return df
-
-    return pd.DataFrame(
+    else:
+        print(response["message"])
+    df = pd.DataFrame(
         columns=[
             "blockNumber",
             "timeStamp",
@@ -66,6 +66,7 @@ def get_normal_transactions_by_address(
             "functionName",
         ]
     )
+    return df
 
 
 # get normal transactions across multiple chains
@@ -88,22 +89,18 @@ def get_normal_transactions_by_address_on_all_chains(
 
 
 # get normal transactions for all wallets and chains
-def get_normal_transactions_for_all_wallets_on_all_chains(
-    addresses, chains, start_block=0, end_block=9999999
-):
+def get_normal_transactions_for_all_wallets_on_all_chains(addresses, chains):
     normal_transactions = pd.DataFrame()
-
     for address in addresses:
         address = address.lower()
         for chain in chains:
-            normal_transactions = pd.concat(
-                [
-                    normal_transactions,
-                    get_normal_transactions_by_address(
-                        address, chain, start_block, end_block
-                    ),
-                ]
-            )
+            with rate_limiter:
+                normal_transactions = pd.concat(
+                    [
+                        normal_transactions,
+                        get_normal_transactions_by_address(address, chain),
+                    ]
+                )
 
     return normal_transactions
 
@@ -115,6 +112,26 @@ def filter_normal_transactions_by_address_to_address(normal_transactions, to_add
     ]
 
     return normal_transactions_to_address
+
+
+def filter_normal_transactions_to_many_addresses(normal_transactions, addresses):
+    normal_transactions_to_addresses = normal_transactions[
+        normal_transactions["to"].isin(addresses)
+    ]
+
+    return normal_transactions_to_addresses
+
+
+def get_token_transfers(wallets, chains):
+    token_transfers = pd.DataFrame()
+    for wallet in wallets:
+        for chain in chains:
+            with rate_limiter:
+                temp_transfers = get_token_txs_by_wallet(wallet, None, chain)
+
+            token_transfers = pd.concat([token_transfers, temp_transfers])
+
+    return token_transfers
 
 
 # get all erc20 sends for a given wallet
@@ -132,13 +149,12 @@ def get_token_txs_by_wallet(
         url = url.format(base_url, address, start_block, end_block, api_key)
 
     response = requests.get(url).json()
-    if response["result"]:
+    if response["status"] == "1":
         df = pd.DataFrame(response["result"])
         columns_str_to_int = [
             "blockNumber",
             "timeStamp",
             "nonce",
-            "value",
             "tokenDecimal",
             "transactionIndex",
             "gas",
@@ -150,10 +166,15 @@ def get_token_txs_by_wallet(
         for column in columns_str_to_int:
             df[column] = pd.to_numeric(df[column])
 
-        return pd.DataFrame(response["result"])
+        df["wallet"] = address
+        df["chain"] = chain
+
+        return df
+    else:
+        print(response["message"])
 
     # ensure no errors if nothing is found
-    return pd.DataFame(
+    return pd.DataFrame(
         columns=[
             "blockNumber",
             "timeStamp",
@@ -174,6 +195,8 @@ def get_token_txs_by_wallet(
             "cumulativeGasUsed",
             "input",
             "confirmations",
+            "wallet",
+            "chain",
         ]
     )
 
@@ -191,3 +214,21 @@ def get_all_erc20_tokens_interacted_with(
     tokens.reset_index(drop=True, inplace=True)
 
     return tokens[["tokenSymbol", "tokenName", "contractAddress"]]
+
+
+def main(verbose=False):
+    wallets = WALLET_LIST
+    chains = CHAIN_LIST
+
+    normal_transactions = get_normal_transactions_for_all_wallets_on_all_chains(
+        wallets, chains
+    )
+
+    if verbose:
+        print(normal_transactions)
+
+    return normal_transactions
+
+
+if __name__ == "__main__":
+    _ = main(verbose=True)

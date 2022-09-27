@@ -40,40 +40,50 @@ def get_borrows_and_repayments(lending_pool_transfers):
 
     # loop over all the tokens and calculate the running balances at each transaction
     tokens = borrows_and_repayments["tokenSymbol"].unique()
-    balances = pd.DataFrame()
-    for token in tokens:
-        # get the transactions for this token
-        temp_txs = borrows_and_repayments[
-            borrows_and_repayments["tokenSymbol"] == token
-        ]
+    wallets = borrows_and_repayments["wallet"].unique()
+    pools = borrows_and_repayments["pool"].unique()
 
-        # for each transaction compute the amount in the pool and the interest withdrawn
-        temp_borrows = 0
-        temp_repayments = 0
-        # loop over all the transactions for this token
-        for _, tx in temp_txs.iterrows():
-            # increment borrows, withdrawals, and accrued interest
-            amount = tx["amount_fixed"]
-            if tx["action"] == "borrow":
-                temp_borrows += amount
-            elif tx["action"] == "repay":
-                temp_repayments += amount
-            temp_interest = max(temp_repayments - temp_borrows, 0)
-            row = pd.DataFrame(
-                [
-                    {
-                        "tokenSymbol": tx["tokenSymbol"],
-                        "hash": tx["hash"],
-                        "datetime": tx["datetime"],
-                        "action": tx["action"],
-                        "amount": amount,
-                        "total_borrows": temp_borrows,
-                        "total_repayments": temp_repayments,
-                        "total_interest_paid": temp_interest,
-                    }
+    balances = pd.DataFrame()
+    for wallet in wallets:
+        for pool in pools:
+            for token in tokens:
+                # get the transactions for this token, pool, and wallet
+                temp_txs = borrows_and_repayments[
+                    (borrows_and_repayments["tokenSymbol"] == token)
+                    & (borrows_and_repayments["pool"] == pool)
+                    & (borrows_and_repayments["wallet"] == wallet)
                 ]
-            )
-            balances = pd.concat([balances, row])
+
+                # for each transaction compute the amount in the pool and the interest withdrawn
+                temp_borrows = 0
+                temp_repayments = 0
+                # loop over all the transactions for this token
+                for _, tx in temp_txs.iterrows():
+                    # increment borrows, withdrawals, and accrued interest
+                    amount = tx["amount_fixed"]
+                    if tx["action"] == "borrow":
+                        temp_borrows += amount
+                    elif tx["action"] == "repay":
+                        temp_repayments += amount
+                    temp_interest = max(temp_repayments - temp_borrows, 0)
+                    row = pd.DataFrame(
+                        [
+                            {
+                                "tokenSymbol": tx["tokenSymbol"],
+                                "hash": tx["hash"],
+                                "datetime": tx["datetime"],
+                                "action": tx["action"],
+                                "amount": amount,
+                                "total_borrows": temp_borrows,
+                                "total_repayments": temp_repayments,
+                                "total_interest_paid": temp_interest,
+                                "wallet": tx["wallet"],
+                                "pool": tx["pool"],
+                                "chain": tx["chain"],
+                            }
+                        ]
+                    )
+                    balances = pd.concat([balances, row])
 
     return balances
 
@@ -84,69 +94,93 @@ def get_split_interest_txs_borrows(borrows_and_repayments):
     # look at repayments only
     repayments = borrows_and_repayments[borrows_and_repayments["action"] == "repay"]
     tokens = repayments["tokenSymbol"].unique()  # get list of tokensj
+    wallets = repayments["wallet"].unique()
+    pools = repayments["pool"].unique()
 
     split_txs = pd.DataFrame()
-    for token in tokens:
-        # get repayments for this token only
-        temp_repayments = repayments[repayments["tokenSymbol"] == token]
 
-        prev_interest = 0
-        # loop over repayments for this token
-        for _, repayment in temp_repayments.iterrows():
-            # if interest was gained in this tx...
-            if repayment["total_interest_paid"] > prev_interest:
-                # calculate interest and principal repayment
-                this_interest = repayment["total_interest_paid"] - prev_interest
-                this_principal = repayment["amount"] - this_interest
-                prev_interest = repayment["total_interest_paid"]
+    for wallet in wallets:
+        for pool in pools:
+            for token in tokens:
+                # get repayments for this wallet, pool, and token only
+                temp_repayments = repayments[
+                    (repayments["tokenSymbol"] == token)
+                    & (repayments["pool"] == pool)
+                    & (repayments["wallet"] == wallet)
+                ]
 
-                # construct two tx's for interest and principal repayment
-                txs = pd.DataFrame(
-                    [
-                        # principal
-                        {
-                            "tokenSymbol": repayment["tokenSymbol"],
-                            "hash": repayment["hash"],
-                            "datetime": repayment["datetime"],
-                            "action": "repay_principal",
-                            "amount": this_principal,
-                            "total_borrows": repayment["total_borrows"],
-                            "total_repayments": repayment["total_repayments"],
-                            "total_interest_paid": repayment["total_interest_paid"],
-                        },
-                        # interest
-                        {
-                            "tokenSymbol": repayment["tokenSymbol"],
-                            "hash": repayment["hash"],
-                            "datetime": repayment["datetime"],
-                            "action": "repay_interest",
-                            "amount": this_interest,
-                            "total_borrows": repayment["total_borrows"],
-                            "total_repayments": repayment["total_repayments"],
-                            "total_interest_paid": repayment["total_interest_paid"],
-                        },
-                    ]
-                )
+                prev_interest = 0
+                # loop over repayments for this token
+                for _, repayment in temp_repayments.iterrows():
+                    # if interest was gained in this tx...
+                    if repayment["total_interest_paid"] > prev_interest:
+                        # calculate interest and principal repayment
+                        this_interest = repayment["total_interest_paid"] - prev_interest
+                        this_principal = repayment["amount"] - this_interest
+                        prev_interest = repayment["total_interest_paid"]
 
-                # concatenate to working dataframe
-                split_txs = pd.concat([split_txs, txs])
-            else:  # if only principal was repaid, concat just one tx
-                this_principal = repayment["amount"]
-                tx = pd.DataFrame(
-                    [
-                        {
-                            "tokenSymbol": repayment["tokenSymbol"],
-                            "hash": repayment["hash"],
-                            "datetime": repayment["datetime"],
-                            "action": "repay_principal",
-                            "amount": this_principal,
-                            "total_borrows": repayment["total_borrows"],
-                            "total_repayments": repayment["total_repayments"],
-                            "total_interest_paid": repayment["total_interest_paid"],
-                        }
-                    ]
-                )
-                split_txs = pd.concat([split_txs, tx])
+                        # construct two tx's for interest and principal repayment
+                        txs = pd.DataFrame(
+                            [
+                                # principal
+                                {
+                                    "tokenSymbol": repayment["tokenSymbol"],
+                                    "hash": repayment["hash"],
+                                    "datetime": repayment["datetime"],
+                                    "action": "repay_principal",
+                                    "amount": this_principal,
+                                    "total_borrows": repayment["total_borrows"],
+                                    "total_repayments": repayment["total_repayments"],
+                                    "total_interest_paid": repayment[
+                                        "total_interest_paid"
+                                    ],
+                                    "wallet": repayment["wallet"],
+                                    "pool": repayment["pool"],
+                                    "chain": repayment["chain"],
+                                },
+                                # interest
+                                {
+                                    "tokenSymbol": repayment["tokenSymbol"],
+                                    "hash": repayment["hash"],
+                                    "datetime": repayment["datetime"],
+                                    "action": "repay_interest",
+                                    "amount": this_interest,
+                                    "total_borrows": repayment["total_borrows"],
+                                    "total_repayments": repayment["total_repayments"],
+                                    "total_interest_paid": repayment[
+                                        "total_interest_paid"
+                                    ],
+                                    "wallet": repayment["wallet"],
+                                    "pool": repayment["pool"],
+                                    "chain": repayment["chain"],
+                                },
+                            ]
+                        )
+
+                        # concatenate to working dataframe
+                        split_txs = pd.concat([split_txs, txs])
+                    else:  # if only principal was repaid, concat just one tx
+                        this_principal = repayment["amount"]
+                        tx = pd.DataFrame(
+                            [
+                                {
+                                    "tokenSymbol": repayment["tokenSymbol"],
+                                    "hash": repayment["hash"],
+                                    "datetime": repayment["datetime"],
+                                    "action": "repay_principal",
+                                    "amount": this_principal,
+                                    "total_borrows": repayment["total_borrows"],
+                                    "total_repayments": repayment["total_repayments"],
+                                    "total_interest_paid": repayment[
+                                        "total_interest_paid"
+                                    ],
+                                    "wallet": repayment["wallet"],
+                                    "pool": repayment["pool"],
+                                    "chain": repayment["chain"],
+                                }
+                            ]
+                        )
+                        split_txs = pd.concat([split_txs, tx])
 
     return split_txs
 

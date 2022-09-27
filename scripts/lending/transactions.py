@@ -21,12 +21,51 @@ def get_normal_transactions_by_address(
     url = url.format(base_url, address, start_block, end_block, api_key)
 
     response = requests.get(url).json()
-    if response['result']:
-        return pd.DataFrame(response["result"])
-    return pd.DataFrame(columns=['blockNumber', 'timeStamp', 'hash', 'nonce', 'blockHash',
-       'transactionIndex', 'from', 'to', 'value', 'gas', 'gasPrice', 'isError',
-       'txreceipt_status', 'input', 'contractAddress', 'cumulativeGasUsed',
-       'gasUsed', 'confirmations', 'methodId', 'functionName'])
+    if response["result"]:
+        df = pd.DataFrame(response["result"])
+        columns_str_to_int = [
+            "blockNumber",
+            "timeStamp",
+            "nonce",
+            "transactionIndex",
+            "value",
+            "gas",
+            "gasPrice",
+            "isError",
+            "txreceipt_status",
+            "cumulativeGasUsed",
+            "gasUsed",
+            "confirmations",
+        ]
+        for column in columns_str_to_int:
+            df[column] = pd.to_numeric(df[column])
+
+        return df
+
+    return pd.DataFrame(
+        columns=[
+            "blockNumber",
+            "timeStamp",
+            "hash",
+            "nonce",
+            "blockHash",
+            "transactionIndex",
+            "from",
+            "to",
+            "value",
+            "gas",
+            "gasPrice",
+            "isError",
+            "txreceipt_status",
+            "input",
+            "contractAddress",
+            "cumulativeGasUsed",
+            "gasUsed",
+            "confirmations",
+            "methodId",
+            "functionName",
+        ]
+    )
 
 
 # get normal transactions across multiple chains
@@ -93,14 +132,50 @@ def get_token_txs_by_wallet(
         url = url.format(base_url, address, start_block, end_block, api_key)
 
     response = requests.get(url).json()
-    if response['result']:
-        return pd.DataFrame(response["result"])
-    # ensure no errors if nothing is found
-    return pd.DataFame(columns=['blockNumber', 'timeStamp', 'hash', 'nonce', 'blockHash', 'from',
-       'contractAddress', 'to', 'value', 'tokenName', 'tokenSymbol',
-       'tokenDecimal', 'transactionIndex', 'gas', 'gasPrice', 'gasUsed',
-       'cumulativeGasUsed', 'input', 'confirmations'])
+    if response["result"]:
+        df = pd.DataFrame(response["result"])
+        columns_str_to_int = [
+            "blockNumber",
+            "timeStamp",
+            "nonce",
+            "value",
+            "tokenDecimal",
+            "transactionIndex",
+            "gas",
+            "gasPrice",
+            "gasUsed",
+            "cumulativeGasUsed",
+            "confirmations",
+        ]
+        for column in columns_str_to_int:
+            df[column] = pd.to_numeric(df[column])
 
+        return pd.DataFrame(response["result"])
+
+    # ensure no errors if nothing is found
+    return pd.DataFame(
+        columns=[
+            "blockNumber",
+            "timeStamp",
+            "hash",
+            "nonce",
+            "blockHash",
+            "from",
+            "contractAddress",
+            "to",
+            "value",
+            "tokenName",
+            "tokenSymbol",
+            "tokenDecimal",
+            "transactionIndex",
+            "gas",
+            "gasPrice",
+            "gasUsed",
+            "cumulativeGasUsed",
+            "input",
+            "confirmations",
+        ]
+    )
 
 
 # get all erc20 tokens interacted with

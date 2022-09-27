@@ -1,4 +1,3 @@
-
 """
 This script is used for calculating interest rewards on lonas taken from AAVE
 The goal is to take a dataframe of transactions for a given wallet with a given pool / chain,
@@ -34,7 +33,9 @@ def get_borrows_and_repayments(lending_pool_transfers):
 
     # get borrows and repayments only
     borrows_and_repayments = lending_pool_transfers[
-        lending_pool_transfers["action"].isin(["borrow", "borrowETH", "repay","repayETH"])
+        lending_pool_transfers["action"].isin(
+            ["borrow", "borrowETH", "repay", "repayETH"]
+        )
     ]
 
     # loop over all the tokens and calculate the running balances at each transaction
@@ -79,11 +80,9 @@ def get_borrows_and_repayments(lending_pool_transfers):
 
 # given a dataframe of running totals for borrows and repayments
 # split out repayments that paid interest into multiple transactions
-def split_interest_transactions(borrows_and_repayments):
+def get_split_interest_txs_borrows(borrows_and_repayments):
     # look at repayments only
-    repayments = borrows_and_repayments[
-        borrows_and_repayments["action"] == "repay"
-    ]
+    repayments = borrows_and_repayments[borrows_and_repayments["action"] == "repay"]
     tokens = repayments["tokenSymbol"].unique()  # get list of tokensj
 
     split_txs = pd.DataFrame()
@@ -113,9 +112,7 @@ def split_interest_transactions(borrows_and_repayments):
                             "amount": this_principal,
                             "total_borrows": repayment["total_borrows"],
                             "total_repayments": repayment["total_repayments"],
-                            "total_interest_paid": repayment[
-                                "total_interest_paid"
-                            ],
+                            "total_interest_paid": repayment["total_interest_paid"],
                         },
                         # interest
                         {
@@ -126,9 +123,7 @@ def split_interest_transactions(borrows_and_repayments):
                             "amount": this_interest,
                             "total_borrows": repayment["total_borrows"],
                             "total_repayments": repayment["total_repayments"],
-                            "total_interest_paid": repayment[
-                                "total_interest_paid"
-                            ],
+                            "total_interest_paid": repayment["total_interest_paid"],
                         },
                     ]
                 )
@@ -147,9 +142,7 @@ def split_interest_transactions(borrows_and_repayments):
                             "amount": this_principal,
                             "total_borrows": repayment["total_borrows"],
                             "total_repayments": repayment["total_repayments"],
-                            "total_interest_paid": repayment[
-                                "total_interest_paid"
-                            ],
+                            "total_interest_paid": repayment["total_interest_paid"],
                         }
                     ]
                 )
@@ -169,7 +162,7 @@ def main(verbose=False):
 
     borrows_and_repayments = get_borrows_and_repayments(lending_pool_transfers)
 
-    split_txs = split_interest_transactions(borrows_and_repayments)
+    split_txs = get_split_interest_txs_borrows(borrows_and_repayments)
 
     if verbose == True:
         print(borrows_and_repayments)

@@ -78,7 +78,7 @@ def get_deposits_and_withdrawals(lending_pool_transfers):
 
 # given a dataframe of running totals for deposits and withdrawals
 # split out withdraws that received interest into multiple transactions
-def split_interest_transactions(deposits_and_withdrawals):
+def get_split_interest_txs_collateral(deposits_and_withdrawals):
     # look at withdrawals only
     withdrawals = deposits_and_withdrawals[
         deposits_and_withdrawals["action"] == "withdraw"
@@ -166,7 +166,7 @@ def main(verbose=False):
 
     deposits_and_withdrawals = get_deposits_and_withdrawals(lending_pool_transfers)
 
-    split_txs = split_interest_transactions(deposits_and_withdrawals)
+    split_txs = get_split_interest_txs_collateral(deposits_and_withdrawals)
 
     if verbose == True:
         print(split_txs)
@@ -179,4 +179,6 @@ if __name__ == "__main__":
     deposits_and_withdrawals.to_csv(
         "output_files/lending/deposits_and_withdrawals.csv", index=False
     )
-    split_txs.to_csv("output_files/lending/split_interest_txs_collateral.csv", index=False)
+    split_txs.to_csv(
+        "output_files/lending/split_interest_txs_collateral.csv", index=False
+    )

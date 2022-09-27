@@ -12,8 +12,10 @@ WEB3_POLY_PROJECT_ID = config["WEB3_POLY_PROJECT_ID"]
 # read the list of wallets from .env
 # wallets are in a string dictionary
 WALLETS = ast.literal_eval(config["WALLETS"])
+for item in WALLETS.items():
+    WALLETS[item[0]] = item[1].lower()
 WALLET_LIST = list(WALLETS.values())
-wallet_address_to_name = {wallet.lower(): name for name, wallet in WALLETS.items()}
+wallet_address_to_name = {wallet: name for name, wallet in WALLETS.items()}
 
 # get block explorer api keys
 ETHERSCAN_TOKEN = config["ETHERSCAN_TOKEN"]
@@ -135,3 +137,7 @@ chain_id_to_name = {
 CHAIN_LIST = list(CHAINS.keys())
 # get the chain ids in a list format
 CHAIN_IDS = chain_id_to_name.keys()
+
+TEST_WALLET = WALLET_LIST[11]
+TEST_POOL = CHAINS["polygon"]['v2_pool']
+TEST_CHAIN = "polygon"

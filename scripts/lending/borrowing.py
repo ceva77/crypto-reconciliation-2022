@@ -11,7 +11,6 @@ We provide functions to convert these initial two transactions into 3:
 3) $0.05M interest paid
 """
 
-
 import pandas as pd
 
 from scripts.lending.lending_pools import *

@@ -17,12 +17,12 @@ except ModuleNotFoundError:
     from lending_pools import *
 
 import pandas as pd
-from enum import Enum
 
 
-chain = "polygon"
-pool = CHAINS["polygon"]["v2_pool"]
-wallet = WALLET_LIST[11]
+lending_pool_transfers = pd.read_excel(
+    "output_files/lending/lending_pool_transfers.xlsx",
+    sheet_name="all_transfers",
+)
 
 
 # sift token transfers from the lending pool. Filter for "deposit" and "withdraw" only
@@ -34,7 +34,9 @@ def get_deposits_and_withdrawals(lending_pool_transfers):
 
     # get deposits and withdraws only
     deposits_and_withdraws = lending_pool_transfers[
-        lending_pool_transfers["action"].isin(["deposit", "withdraw"])
+        lending_pool_transfers["action"].isin(
+            ["deposit", "withdraw", "depositETH", "withdrawETH"]
+        )
     ]
 
     # loop over all the tokens and calculate the running balances at each transaction
@@ -76,6 +78,7 @@ def get_deposits_and_withdrawals(lending_pool_transfers):
                                 "total_withdraws": temp_withdraws,
                                 "total_interest_received": temp_interest,
                                 "wallet": tx["wallet"],
+                                "wallet_name": tx["wallet_name"],
                                 "pool": tx["pool"],
                                 "chain": tx["chain"],
                             }
@@ -135,6 +138,7 @@ def get_split_interest_txs_collateral(deposits_and_withdrawals):
                                         "total_interest_received"
                                     ],
                                     "wallet": withdraw["wallet"],
+                                    "wallet_name": withdraw["wallet_name"],
                                     "pool": withdraw["pool"],
                                     "chain": withdraw["chain"],
                                 },
@@ -150,6 +154,7 @@ def get_split_interest_txs_collateral(deposits_and_withdrawals):
                                         "total_interest_received"
                                     ],
                                     "wallet": withdraw["wallet"],
+                                    "wallet_name": withdraw["wallet_name"],
                                     "pool": withdraw["pool"],
                                     "chain": withdraw["chain"],
                                 },
@@ -174,6 +179,7 @@ def get_split_interest_txs_collateral(deposits_and_withdrawals):
                                         "total_interest_received"
                                     ],
                                     "wallet": withdraw["wallet"],
+                                    "wallet_name": withdraw["wallet_name"],
                                     "pool": withdraw["pool"],
                                     "chain": withdraw["chain"],
                                 }
@@ -187,12 +193,6 @@ def get_split_interest_txs_collateral(deposits_and_withdrawals):
 # get split interest transactions for the sample pool and wallet on polygon
 # if running from console, output results to a .csv file
 def main(verbose=False):
-    wallet = WALLET_LIST[11]
-    pool = CHAINS["polygon"]["v2_pool"]
-    chain = "polygon"
-
-    lending_pool_transfers = get_token_transfers_with_lending_pool(wallet, pool, chain)
-
     deposits_and_withdrawals = get_deposits_and_withdrawals(lending_pool_transfers)
 
     split_txs = get_split_interest_txs_collateral(deposits_and_withdrawals)
@@ -205,9 +205,8 @@ def main(verbose=False):
 
 if __name__ == "__main__":
     deposits_and_withdrawals, split_txs = main(verbose=True)
-    deposits_and_withdrawals.to_csv(
-        "output_files/lending/deposits_and_withdrawals.csv", index=False
-    )
-    split_txs.to_csv(
-        "output_files/lending/split_interest_txs_collateral.csv", index=False
-    )
+    with pd.ExcelWriter("output_files/lending/collateral.xlsx") as writer:
+        deposits_and_withdrawals.to_excel(
+            writer, sheet_name="deposits_and_withdrawals", index=False
+        )
+        split_txs.to_excel(writer, sheet_name="split_interest_txs", index=False)

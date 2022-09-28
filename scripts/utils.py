@@ -129,7 +129,7 @@ CHAINS = {
         "base_token_name": "Gnosis",
         "base_token_symbol": "xDai",
         "base_token_decimals": 18,
-        "pools": []
+        "pools": [],
     },
     "aurora": {
         "chain_id": 1313161554,
@@ -138,7 +138,7 @@ CHAINS = {
         "base_token_name": "Ether",
         "base_token_symbol": "ETH",
         "base_token_decimals": 18,
-        "pools": []
+        "pools": [],
     },
 }
 chain_id_to_name = {
@@ -169,6 +169,7 @@ for chain in CHAIN_LIST:
         POOL_LIST.append(pool)
     except KeyError:
         pass
+POOL_LIST = [pool.lower() for pool in POOL_LIST]
 
 TEST_WALLET = WALLET_LIST[11]
 TEST_POOL = CHAINS["polygon"]["v2_pool"]

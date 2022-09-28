@@ -19,10 +19,10 @@ except ModuleNotFoundError:
 import pandas as pd
 
 
-chain = "polygon"
-pool = CHAINS["polygon"]["v2_pool"]
-wallet = WALLET_LIST[11]
-
+lending_pool_transfers = pd.read_excel(
+    "output_files/lending/lending_pool_transfers.xlsx",
+    sheet_name="all_transfers",
+)
 
 # sift token transfers from the lending pool. Filter for "deposit" and "withdraw" only
 def get_borrows_and_repayments(lending_pool_transfers):
@@ -61,9 +61,9 @@ def get_borrows_and_repayments(lending_pool_transfers):
                 for _, tx in temp_txs.iterrows():
                     # increment borrows, withdrawals, and accrued interest
                     amount = tx["amount_fixed"]
-                    if tx["action"] == "borrow":
+                    if tx["action"] in ["borrowETH", "borrow"]:
                         temp_borrows += amount
-                    elif tx["action"] == "repay":
+                    elif tx["action"] in ["repayETH", "repay"]:
                         temp_repayments += amount
                     temp_interest = max(temp_repayments - temp_borrows, 0)
                     row = pd.DataFrame(
@@ -78,6 +78,7 @@ def get_borrows_and_repayments(lending_pool_transfers):
                                 "total_repayments": temp_repayments,
                                 "total_interest_paid": temp_interest,
                                 "wallet": tx["wallet"],
+                                "wallet_name": tx["wallet_name"],
                                 "pool": tx["pool"],
                                 "chain": tx["chain"],
                             }
@@ -92,7 +93,9 @@ def get_borrows_and_repayments(lending_pool_transfers):
 # split out repayments that paid interest into multiple transactions
 def get_split_interest_txs_borrows(borrows_and_repayments):
     # look at repayments only
-    repayments = borrows_and_repayments[borrows_and_repayments["action"] == "repay"]
+    repayments = borrows_and_repayments[
+        borrows_and_repayments["action"].isin(["repay", "repayETH"])
+    ]
     tokens = repayments["tokenSymbol"].unique()  # get list of tokensj
     wallets = repayments["wallet"].unique()
     pools = repayments["pool"].unique()
@@ -135,6 +138,7 @@ def get_split_interest_txs_borrows(borrows_and_repayments):
                                         "total_interest_paid"
                                     ],
                                     "wallet": repayment["wallet"],
+                                    "wallet_name": repayment["wallet_name"],
                                     "pool": repayment["pool"],
                                     "chain": repayment["chain"],
                                 },
@@ -151,6 +155,7 @@ def get_split_interest_txs_borrows(borrows_and_repayments):
                                         "total_interest_paid"
                                     ],
                                     "wallet": repayment["wallet"],
+                                    "wallet_name": repayment["wallet_name"],
                                     "pool": repayment["pool"],
                                     "chain": repayment["chain"],
                                 },
@@ -175,6 +180,7 @@ def get_split_interest_txs_borrows(borrows_and_repayments):
                                         "total_interest_paid"
                                     ],
                                     "wallet": repayment["wallet"],
+                                    "wallet_name": repayment["wallet_name"],
                                     "pool": repayment["pool"],
                                     "chain": repayment["chain"],
                                 }
@@ -188,12 +194,6 @@ def get_split_interest_txs_borrows(borrows_and_repayments):
 # get split interest transactions for the sample pool and wallet on polygon
 # if running from console, output results to a .csv file
 def main(verbose=False):
-    wallet = WALLET_LIST[11]
-    pool = CHAINS["polygon"]["v2_pool"]
-    chain = "polygon"
-
-    lending_pool_transfers = get_token_transfers_with_lending_pool(wallet, pool, chain)
-
     borrows_and_repayments = get_borrows_and_repayments(lending_pool_transfers)
 
     split_txs = get_split_interest_txs_borrows(borrows_and_repayments)
@@ -207,7 +207,8 @@ def main(verbose=False):
 
 if __name__ == "__main__":
     borrows_and_repayments, split_txs = main(verbose=True)
-    borrows_and_repayments.to_csv(
-        "output_files/lending/borrows_and_repayments.csv", index=False
-    )
-    split_txs.to_csv("output_files/lending/split_interest_txs_borrows.csv", index=False)
+    with pd.ExcelWriter("output_files/lending/borrowing.xlsx") as writer:
+        borrows_and_repayments.to_excel(
+            writer, sheet_name="borrows_and_repayments", index=False
+        )
+        split_txs.to_excel(writer, sheet_name="split_interest_txs", index=False)

@@ -1,6 +1,6 @@
 import pandas as pd
 
-from scripts.lending.transactions import get_normal_transactions, get_token_transfers
+from scripts.transactions import get_normal_transactions, get_token_transfers
 from scripts.lending.lending_pools import (
     merge_token_with_raw_transfers,
     get_raw_transfers_with_lending_pools,

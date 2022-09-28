@@ -20,8 +20,6 @@ We used the Etherscan API (and the like for other EVM-chains) in order to track 
 
 ## To-Do
 
-- Finish tracking for lending. I have completed a working version for collateral and interest on deposits, but need to create a mirror image script to deal with loans that we've taken out.
-- Handle getting data from other lending protocols besides AAVE. Need a way to deal with different function handles, but otherwise the core logic of calculating interest etc, should be substantially the same.
 - Set up a folder for dealing with LP swaps. There may be more transactions within our backlog that have not been recognized by Lukka, in which case we may need custom logic to deal with these.
 - External transfers - we need a methodology to analyze and deal with transfers of ERC20 tokens to external wallets. This may require manual effort since these might not be pure disposal of assets but could be loans / trades with 3rd parties.
 - More to come...

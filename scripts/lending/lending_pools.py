@@ -1,10 +1,7 @@
 import pandas as pd
 from datetime import datetime
 
-try:
-    from scripts.lending.transactions import *
-except ModuleNotFoundError:
-    from transactions import *
+from scripts.transactions import *
 
 
 pools = POOL_LIST

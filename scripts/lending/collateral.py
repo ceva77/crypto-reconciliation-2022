@@ -11,12 +11,10 @@ We provide functions to convert these initial two transactions into 3:
 3) $0.05M interest received
 """
 
-try:
-    from scripts.lending.lending_pools import *
-except ModuleNotFoundError:
-    from lending_pools import *
 
 import pandas as pd
+
+from scripts.lending.lending_pools import *
 
 
 lending_pool_transfers = pd.read_excel(
@@ -26,16 +24,16 @@ lending_pool_transfers = pd.read_excel(
 
 
 # sift token transfers from the lending pool. Filter for "deposit" and "withdraw" only
-def get_deposits_and_withdrawals(lending_pool_transfers):
+def get_deposits_and_withdrawals(_lending_pool_transfers):
     # fix function names
-    lending_pool_transfers["action"] = [
-        name.split("(")[0] for name in lending_pool_transfers["functionName"]
+    _lending_pool_transfers["action"] = [
+        name.split("(")[0] for name in _lending_pool_transfers["functionName"]
     ]
 
     # get deposits and withdraws only
-    deposits_and_withdraws = lending_pool_transfers[
-        lending_pool_transfers["action"].isin(
-            ["deposit", "withdraw", "depositETH", "withdrawETH"]
+    deposits_and_withdraws = _lending_pool_transfers[
+        _lending_pool_transfers["action"].isin(
+            ["supply", "deposit", "withdraw", "depositETH", "withdrawETH"]
         )
     ]
 
@@ -61,9 +59,9 @@ def get_deposits_and_withdrawals(lending_pool_transfers):
                 for _, tx in temp_txs.iterrows():
                     # increment deposits, withdrawals, and accrued interest
                     amount = tx["amount_fixed"]
-                    if tx["action"] == "deposit":
+                    if tx["action"] in ["supply","depositETH","deposit"]:
                         temp_deposits += amount
-                    elif tx["action"] == "withdraw":
+                    elif tx["action"] in ["withdrawETH","withdraw"]:
                         temp_withdraws += amount
                     temp_interest = max(temp_withdraws - temp_deposits, 0)
                     row = pd.DataFrame(
@@ -94,7 +92,7 @@ def get_deposits_and_withdrawals(lending_pool_transfers):
 def get_split_interest_txs_collateral(deposits_and_withdrawals):
     # look at withdrawals only
     withdrawals = deposits_and_withdrawals[
-        deposits_and_withdrawals["action"] == "withdraw"
+        deposits_and_withdrawals["action"].isin(["withdraw","withdrawETH"])
     ]
     tokens = withdrawals["tokenSymbol"].unique()  # get list of tokensj
     wallets = withdrawals["wallet"].unique()

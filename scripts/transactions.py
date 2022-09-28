@@ -1,11 +1,10 @@
-from lib2to3.pgen2 import token
 import requests
 import pandas as pd
 
 try:
     from scripts.utils import *
 except ModuleNotFoundError:
-    from ..utils import *
+    from .utils import *
 
 
 # get all "normal" transactions for a particular address on a given chain

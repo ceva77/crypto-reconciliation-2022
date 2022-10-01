@@ -1,6 +1,7 @@
 from dotenv import dotenv_values, find_dotenv
 import ast
 from ratelimiter import RateLimiter
+import pandas as pd
 
 rate_limiter = RateLimiter(max_calls=5, period=1)
 
@@ -49,9 +50,11 @@ CHAINS = {
         "explorer_token": POLYGONSCAN_TOKEN,
         "v3_pool": "0x794a61358D6845594F94dc1DB02A252b5b4814aD",
         "v2_pool": "0x8dFf5E27EA6b7AC08EbFdf9eB090F32ee9a30fcf",
+        "v2_gateway": "0xbEadf48d62aCC944a06EEaE0A9054A90E5A7dc97",
         "pools": [
             "0x794a61358D6845594F94dc1DB02A252b5b4814aD",
             "0x8dFf5E27EA6b7AC08EbFdf9eB090F32ee9a30fcf",
+            "0xbEadf48d62aCC944a06EEaE0A9054A90E5A7dc97",
         ],
         "amUSDT": "0x60D55F02A771d515e077c9C2403a1ef324885CeC",
         "base_token_name": "Polygon",
@@ -64,9 +67,11 @@ CHAINS = {
         "explorer_url": "https://api.snowtrace.io/api",
         "v3_pool": "0x794a61358D6845594F94dc1DB02A252b5b4814aD",
         "v2_pool": "0x4F01AeD16D97E3aB5ab2B501154DC9bb0F1A5A2C",
+        "blizz_gateway": "0x56d0fed06d2e0b5ac80d7a9ed0387694bdf90c33",
         "pools": [
             "0x794a61358D6845594F94dc1DB02A252b5b4814aD",
             "0x4F01AeD16D97E3aB5ab2B501154DC9bb0F1A5A2C",
+            "0x56d0fed06d2e0b5ac80d7a9ed0387694bdf90c33",
         ],
         "base_token_name": "Avalanche",
         "base_token_symbol": "AVAX",
@@ -97,7 +102,12 @@ CHAINS = {
         "explorer_url": "https://api.ftmscan.com/api",
         "explorer_token": FTMSCAN_TOKEN,
         "v3_pool": "0x794a61358D6845594F94dc1DB02A252b5b4814aD",
-        "pools": ["0x794a61358D6845594F94dc1DB02A252b5b4814aD"],
+        "geist_gateway": "0x47102245fea0f8d35a6b28e54505e9ffd83d0704",
+        "pools": 
+        [
+            "0x794a61358D6845594F94dc1DB02A252b5b4814aD",
+            "0x47102245fea0f8d35a6b28e54505e9ffd83d0704"
+        ],
         "base_token_name": "Fantom",
         "base_token_symbol": "FTM",
         "base_token_decimals": 18,
@@ -159,16 +169,8 @@ CHAIN_LIST.remove("harmony")
 
 POOL_LIST = []
 for chain in CHAIN_LIST:
-    try:
-        pool = CHAINS[chain]["v2_pool"]
+    for pool in CHAINS[chain]['pools']:
         POOL_LIST.append(pool)
-    except KeyError:
-        pass
-    try:
-        pool = CHAINS[chain]["v3_pool"]
-        POOL_LIST.append(pool)
-    except KeyError:
-        pass
 POOL_LIST = [pool.lower() for pool in POOL_LIST]
 
 TEST_WALLET = WALLET_LIST[11]

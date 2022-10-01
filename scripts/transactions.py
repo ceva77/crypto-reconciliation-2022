@@ -1,10 +1,8 @@
-import requests
+from datetime import datetime
 import pandas as pd
+import requests
 
-try:
-    from scripts.utils import *
-except ModuleNotFoundError:
-    from .utils import *
+from scripts.utils import CHAINS, CHAIN_LIST, WALLET_LIST, wallet_address_to_name
 
 
 # get all "normal" transactions for a particular address on a given chain
@@ -113,6 +111,7 @@ def get_token_transfers_by_wallet(
         df["wallet"] = wallet
         df["wallet_name"] = wallet_address_to_name[wallet]
         df["chain"] = chain
+        df['value'] = [int(value) for value in df.value]
 
         print(f"{len(df)} token transfers found")
         return df
@@ -162,6 +161,7 @@ def get_normal_transactions(wallets, chains):
                 [normal_transactions, get_normal_transactions_by_wallet(wallet, chain)]
             )
 
+    normal_transactions.reset_index(drop=True, inplace=True)
     return normal_transactions
 
 
@@ -173,6 +173,7 @@ def filter_normal_transactions(normal_transactions, addresses):
         normal_transactions["to"].isin(addresses)
     ]
 
+    normal_transactions_filtered.reset_index(drop=True, inplace=True)
     return normal_transactions_filtered.copy()
 
 
@@ -199,6 +200,125 @@ def get_all_tokens_interacted_with(wallets, chains):
     return tokens[["tokenSymbol", "tokenName", "contractAddress"]]
 
 
+# format transactions where raw eth was exchanged into same format as erc20 transfers
+def get_raw_transfers(_normal_transactions):
+    _normal_transactions.loc[:,('value')] = [int(value) for value in _normal_transactions['value']]
+    plus_value_transactions = _normal_transactions[_normal_transactions['value'] > 0].copy() 
+
+    plus_value_transactions.reset_index(drop=True, inplace=True)
+    plus_value_chains = plus_value_transactions.loc[:,("chain")]
+    plus_value_transactions.loc[:,('tokenName')] = [CHAINS[chain]["base_token_name"] for chain in plus_value_chains] 
+    plus_value_transactions.loc[:,('tokenSymbol')] = [CHAINS[chain]["base_token_symbol"] for chain in plus_value_chains]
+    plus_value_transactions.loc[:,('tokenDecimal')] = [CHAINS[chain]["base_token_decimals"] for chain in plus_value_chains]
+    
+    plus_value_transactions = plus_value_transactions.loc[:,
+        ("blockNumber","timeStamp","hash","nonce","blockHash","from","contractAddress","to","value","tokenName","tokenSymbol","tokenDecimal","transactionIndex","gas","gasPrice","gasUsed","cumulativeGasUsed","input","confirmations","wallet","wallet_name","chain")
+    ]
+
+    return plus_value_transactions
+
+
+# merge transactions with all token and raw eth transfers
+# reformat columns to remove duplicate columns
+def merge_transactions_and_token_transfers(_normal_transactions, _token_transfers):
+    raw_transfers = get_raw_transfers(_normal_transactions)
+    token_transfers = pd.concat([_token_transfers, raw_transfers])
+    token_transfers.reset_index(drop=True, inplace=True)
+
+    merged_transfers = token_transfers.merge(
+        _normal_transactions, how="left", on="hash", suffixes=(None, "_tx")
+    )
+
+    merged_transfers = merged_transfers[
+        [
+            "blockNumber",
+            "timeStamp",
+            "hash",
+            "nonce",
+            "blockHash",
+            "from",
+            "contractAddress",
+            "to",
+            "to_tx",
+            "value",
+            "tokenName",
+            "tokenSymbol",
+            "tokenDecimal",
+            "transactionIndex",
+            "gas",
+            "gasPrice",
+            "gasUsed",
+            "cumulativeGasUsed",
+            "input",
+            "confirmations",
+            "value_tx",
+            "isError",
+            "txreceipt_status",
+            "input_tx",
+            "methodId",
+            "functionName",
+            "wallet",
+            "wallet_name",
+            "chain",
+        ]
+    ]
+
+    merged_transfers.columns = [
+        "blockNumber",
+        "timeStamp",
+        "hash",
+        "nonce",
+        "blockHash",
+        "from",
+        "contractAddress",
+        "transferTo",
+        "to",
+        "amount",
+        "tokenName",
+        "tokenSymbol",
+        "tokenDecimal",
+        "transactionIndex",
+        "gas",
+        "gasPrice",
+        "gasUsed",
+        "cumulativeGasUsed",
+        "input_deprecated",
+        "confirmations",
+        "value",
+        "isError",
+        "txreceipt_status",
+        "input",
+        "methodId",
+        "functionName",
+        "wallet",
+        "wallet_name",
+        "chain",
+    ]
+    columns_str_to_int = [
+        "blockNumber",
+        "timeStamp",
+        "nonce",
+        "tokenDecimal",
+        "transactionIndex",
+        "gas",
+        "gasPrice",
+        "gasUsed",
+        "cumulativeGasUsed",
+        "confirmations",
+    ]
+    for column in columns_str_to_int:
+        merged_transfers[column] = pd.to_numeric(merged_transfers[column])
+    merged_transfers['amount'] = [int(amount) for amount in merged_transfers.amount]
+
+    # add additional columns for use later
+    merged_transfers['datetime'] = [datetime.fromtimestamp(timestamp) for timestamp in merged_transfers.timeStamp]
+    merged_transfers['amount_fixed'] = merged_transfers.amount / 10**merged_transfers.tokenDecimal 
+    merged_transfers['functionName'] = merged_transfers.functionName.astype(str)
+    merged_transfers['action'] = [name.split("(")[0] for name in merged_transfers['functionName']]
+
+    return merged_transfers
+
+
 def main(verbose=False):
     wallets = WALLET_LIST
     chains = CHAIN_LIST
@@ -223,3 +343,8 @@ if __name__ == "__main__":
             writer, sheet_name="normal_transactions", index=False
         )
         token_transfers.to_excel(writer, sheet_name="token_transfers", index=False)
+
+
+normal_transactions = pd.read_csv("output_files/normal_transactions.csv")
+token_transfers = pd.read_csv("output_files/token_transfers.csv")
+all_transfers = merge_transactions_and_token_transfers(normal_transactions, token_transfers)

@@ -14,15 +14,36 @@ We provide functions to convert these initial two transactions into 3:
 import pandas as pd
 
 from scripts.lending.lending_pools import get_pool_transfers
-from scripts.utils import POOL_LIST, CHAINS
-from scripts.transactions import all_transfers
+from scripts.transactions import merge_transactions_and_token_transfers
+from scripts.utils import CHAINS, POOL_LIST
 
-pools = POOL_LIST
-pool_transfers = get_pool_transfers(all_transfers, pools)
+normal_transactions = pd.read_csv("output_files/normal_transactions.csv")
+token_transfers = pd.read_csv("output_files/token_transfers.csv")
+internal_transactions = pd.read_csv("output_files/internal_transactions.csv")
+all_transfers = merge_transactions_and_token_transfers(normal_transactions, token_transfers, internal_transactions)
+pool_transfers = get_pool_transfers(all_transfers, POOL_LIST)
+
+deposit_tokens = [
+    "bAVAX",
+    "gFTM",
+    "amAAVE",
+    "amDAI",
+    "amUSDC",
+    "amUSDT",
+    "amWBTC",
+    "amWMATIC",
+    "aCRV",
+    "aLINK",
+    "aUSDC",
+    "aUSDT",
+    "aXSUSHI",
+    "aYFI",
+    "amWETH",
+]
 
 
-def get_borrows_and_repayments(pool_transfers):
-    borrows_and_repayments = pool_transfers[pool_transfers.action.isin(['borrow','borrowETH','repay','repayETH'])].copy()
+def get_borrows_and_repayments(_pool_transfers):
+    borrows_and_repayments = _pool_transfers[_pool_transfers.action.isin(['borrow','borrowETH','repay','repayETH'])].copy()
     borrows_and_repayments['pool'] = borrows_and_repayments.to
     tokens = borrows_and_repayments.tokenSymbol.unique()
     wallets = borrows_and_repayments.wallet.unique()
@@ -100,10 +121,10 @@ def get_borrows_and_repayments(pool_transfers):
 
 # given a dataframe of running totals for borrows and repayments
 # split out repayments that paid interest into multiple transactions
-def get_split_interest_txs_borrows(borrows_and_repayments):
+def get_split_interest_txs_borrows(_borrows_and_repayments):
     # look at repayments only
-    repayments = borrows_and_repayments[
-        borrows_and_repayments.action.isin(["repay", "repayETH"])
+    repayments = _borrows_and_repayments[
+        _borrows_and_repayments.action.isin(["repay", "repayETH"])
     ].copy()
     tokens = repayments.tokenSymbol.unique()  # get list of tokensj
     wallets = repayments.wallet.unique()
@@ -196,6 +217,47 @@ def get_split_interest_txs_borrows(borrows_and_repayments):
     return split_txs
 
 
+# combine borrowing and deposit split transactions together
+def merge_split_txs(split_txs_borrows, split_txs_deposits):
+    split_txs = pd.concat([split_txs_borrows, split_txs_deposits]).copy()
+    split_txs.reset_index(drop=True, inplace=True)
+
+    variable_debt_txs = split_txs[
+        (split_txs['tokenSymbol'].str.contains("variableDebt"))&
+        (split_txs['action'] == 'repay_interest')
+    ].copy()
+    variable_debt_txs.reset_index(drop=True, inplace=True)
+    variable_debt_txs['action'] = 'dummy_income'
+
+    a_txs = split_txs[
+        (split_txs['tokenSymbol'].isin(deposit_tokens))&
+        (split_txs['action'] == 'withdraw_interest')
+    ].copy()
+    a_txs.reset_index(drop=True, inplace=True)
+    a_txs['action'] = "dummy_income"
+
+    split_txs = pd.concat([split_txs, variable_debt_txs, a_txs]).copy()
+    split_txs.reset_index(drop=True, inplace=True)
+    return split_txs
+
+
+# split txs by accounts between wallets and chain to match lukka system for accounts
+def split_txs_by_account(split_txs):
+    wallets = split_txs.wallet_name.unique()
+    chains = split_txs.chain.unique()
+    total_txs_check = 0
+    total_txs = len(split_txs)
+
+    for wallet_name in wallets:
+        for chain in chains:
+            these_txs = split_txs[(split_txs['wallet_name'] == wallet_name) & (split_txs['chain'] == chain)]
+            if not these_txs.empty:
+                these_txs.to_csv(f'output_files/split_txs/{wallet_name}_{chain}.csv', index=False)
+                total_txs_check += len(these_txs)
+
+    assert total_txs_check == total_txs
+
+
 # get split interest transactions for the sample pool and wallet on polygon
 # if running from console, output results to a .csv file
 def main(verbose=False):
@@ -212,8 +274,7 @@ def main(verbose=False):
 
 if __name__ == "__main__":
     borrows_and_repayments, split_txs = main(verbose=True)
-    with pd.ExcelWriter("output_files/lending/borrowing.xlsx") as writer:
-        borrows_and_repayments.to_excel(
-            writer, sheet_name="borrows_and_repayments", index=False
-        )
-        split_txs.to_excel(writer, sheet_name="split_interest_txs", index=False)
+
+    borrows_and_repayments.to_csv("output_files/lending/borrows_and_repayments.csv", index=False)
+    split_txs.to_csv("output_files/split_txs/split_txs_borrows.csv", index=False)
+

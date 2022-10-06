@@ -14,13 +14,20 @@ We provide functions to convert these initial two transactions into 3:
 
 import pandas as pd
 
-from scripts.lending.lending_pools import pool_transfers
-from scripts.utils import CHAINS
+from scripts.lending.lending_pools import get_pool_transfers
+from scripts.transactions import merge_transactions_and_token_transfers
+from scripts.utils import CHAINS, POOL_LIST
+
+normal_transactions = pd.read_csv("output_files/normal_transactions.csv")
+token_transfers = pd.read_csv("output_files/token_transfers.csv")
+internal_transactions = pd.read_csv("output_files/internal_transactions.csv")
+all_transfers = merge_transactions_and_token_transfers(normal_transactions, token_transfers, internal_transactions)
+pool_transfers = get_pool_transfers(all_transfers, POOL_LIST)
 
 
 # get deposits and withdrawals from the list of all transfers and the transfers with lending pools
-def get_deposits_and_withdrawals(pool_transfers):
-    deposits_and_withdraws = pool_transfers[pool_transfers.action.isin(['deposit','depositETH','withdraw','withdrawETH'])].copy()
+def get_deposits_and_withdrawals(_pool_transfers):
+    deposits_and_withdraws = _pool_transfers[_pool_transfers.action.isin(['deposit','depositETH','withdraw','withdrawETH'])].copy()
     deposits_and_withdraws['pool'] = deposits_and_withdraws.to
     tokens = deposits_and_withdraws.tokenSymbol.unique()
     wallets = deposits_and_withdraws.wallet.unique()
@@ -98,10 +105,10 @@ def get_deposits_and_withdrawals(pool_transfers):
 
 # given a dataframe of running totals for deposits and withdrawals
 # split out withdraws that received interest into multiple transactions
-def get_split_interest_txs_collateral(deposits_and_withdrawals):
+def get_split_interest_txs_collateral(_deposits_and_withdrawals):
     # look at withdrawals only
-    withdrawals = deposits_and_withdrawals[
-        deposits_and_withdrawals.action.isin(["withdraw","withdrawETH"])
+    withdrawals = _deposits_and_withdrawals[
+        _deposits_and_withdrawals.action.isin(["withdraw","withdrawETH"])
     ].copy()
     tokens = withdrawals.tokenSymbol.unique()  # get list of tokensj
     wallets = withdrawals.wallet.unique()
@@ -207,8 +214,6 @@ def main(verbose=False):
 
 if __name__ == "__main__":
     deposits_and_withdrawals, split_txs = main(verbose=True)
-    with pd.ExcelWriter("output_files/lending/collateral.xlsx") as writer:
-        deposits_and_withdrawals.to_excel(
-            writer, sheet_name="deposits_and_withdrawals", index=False
-        )
-        split_txs.to_excel(writer, sheet_name="split_interest_txs", index=False)
+
+    split_txs.to_csv("output_files/split_txs/split_txs_collateral.csv", index=False)
+    deposits_and_withdrawals.to_csv("output_files/lending/deposits_and_withdrawals.csv", index=False)

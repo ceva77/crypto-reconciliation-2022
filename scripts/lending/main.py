@@ -1,6 +1,12 @@
 import pandas as pd
+from datetime import date
 
-from scripts.transactions import get_normal_transactions, get_token_transfers, merge_transactions_and_token_transfers
+from scripts.transactions import (
+    get_normal_transactions, 
+    get_token_transfers, 
+    get_internal_transactions, 
+    merge_transactions_and_token_transfers
+)
 from scripts.lending.lending_pools import get_pool_transfers
 from scripts.lending.collateral import (
     get_deposits_and_withdrawals,
@@ -22,11 +28,19 @@ def build_lending_excel_sheet(_wallets, _pools, _chains, verbose=False):
         print("Getting token transfers")
     token_transfers = get_token_transfers(_wallets, _chains)
 
+    if verbose:
+        print("Getting internal transactions")
+    internal_transactions = get_internal_transactions(_wallets, _chains)
+
     print(f"Retrieved {len(normal_transactions)} normal transactons")
     print(f"Retrieved {len(token_transfers)} erc20 transfers")
 
     # merge normal and token transfers
-    all_transfers = merge_transactions_and_token_transfers(normal_transactions, token_transfers)
+    all_transfers = merge_transactions_and_token_transfers(
+        normal_transactions, 
+        token_transfers, 
+        internal_transactions
+    )
 
     # get all the relevant dataframes
     if verbose:
@@ -52,7 +66,7 @@ def build_lending_excel_sheet(_wallets, _pools, _chains, verbose=False):
     )
 
     # put everything to excel
-    path = f"output_files/lending/aave_lending.xlsx"
+    path = f"output_files/lending/aave_lending_{date.today()}.xlsx"
     with pd.ExcelWriter(path) as writer:
         if verbose:
             print("Writing to excel")
@@ -60,7 +74,7 @@ def build_lending_excel_sheet(_wallets, _pools, _chains, verbose=False):
         normal_transactions.to_excel(
             writer, sheet_name="normal_transactions", index=False
         )
-        token_transfers.to_excel(writer, sheet_name="token_transfers")
+        all_transfers.to_excel(writer, sheet_name="all_transfers")
         pool_transfers.to_excel(
             writer, sheet_name="lending_pool_transfers", index=False
         )

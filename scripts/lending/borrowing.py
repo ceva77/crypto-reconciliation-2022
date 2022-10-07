@@ -41,6 +41,205 @@ deposit_tokens = [
     "amWETH",
 ]
 
+# redo borrowing logic
+# borrow -> add to total_borrows
+# repay -> if amount + total_repayments > total_borrows, then there is interest
+# interest = amount + total_repayments - total_borrows
+# make repay amounts negative if it is to us, and borrows if they are from us
+def handle_tx(_tx, _temp_borrows, _temp_repayments, _temp_interest):
+    if _tx.action in ['repay','repayETH']:
+        row = handle_repay(_tx, _temp_borrows, _temp_repayments, _temp_interest)
+    if _tx.action in ['borrow','borrowETH']:
+        row = handle_borrow(_tx, _temp_borrows, _temp_repayments, _temp_interest)
+
+    return row
+
+
+# handle a borrow
+def handle_borrow(_tx, _temp_borrows, _temp_repayments, _temp_interest):
+    # check if amount is to us or from us
+    amount = _tx.amount_fixed
+    if _tx.transferTo == _tx.wallet:
+        amount = amount
+    elif _tx['from'] == _tx.wallet:
+        # if the amount is from us, then there was an overpayment
+        amount = -amount
+    else:
+        raise Exception(f"transfer is neither to nor from one of our wallets: {_tx.hash}")
+
+    new_borrows = _temp_borrows + amount
+    row = pd.DataFrame(
+        [
+            {
+                "tokenSymbol": _tx.tokenSymbol,
+                "hash": _tx.hash,
+                "datetime": _tx.datetime,
+                "action": "borrow",
+                "transfer_from": _tx['from'],
+                "transfer_to": _tx.transferTo,
+                "amount": amount,
+                "total_borrows": new_borrows,
+                "total_repayments": _temp_repayments,
+                "total_interest": _temp_interest,
+                "wallet": _tx.wallet,
+                "wallet_name": _tx.wallet_name,
+                "pool": _tx.pool,
+                "chain": _tx.chain,
+            },
+        ]
+    )
+
+    return row, new_borrows, _temp_repayments, _temp_interest
+
+
+# handle a repayment
+def handle_repay(_tx, _temp_borrows, _temp_repayments, _temp_interest):
+    # check if amount is to us or from us
+    amount = _tx.amount_fixed
+    if _tx['from'] == _tx.wallet:
+        amount = amount
+    elif _tx.transferTo == _tx.wallet:
+        # if the amount is to us, then there was an overpayment -> make amount negative
+        amount = -amount
+    else:
+        raise Exception(f"transfer is neither to nor from one of our wallets: {_tx.hash}")
+
+    if _temp_repayments < _temp_borrows: # there is principal
+        if _temp_repayments + amount > _temp_borrows + _temp_interest: # there is also interest
+            principal_amount = _temp_borrows + _temp_interest - _temp_repayments  # principal amount is amount up to total borrows
+            interest_amount = amount - principal_amount # interest amount is the rest
+            
+            row = pd.DataFrame(
+                [
+                    # principal
+                    {
+                        "tokenSymbol": _tx.tokenSymbol,
+                        "hash": _tx.hash,
+                        "datetime": _tx.datetime,
+                        "action": "repay_principal",
+                        "transfer_from": _tx['from'],
+                        "transfer_to": _tx.transferTo,
+                        "amount": principal_amount,
+                        "total_borrows": _temp_borrows,
+                        "total_repayments": _temp_repayments + principal_amount,
+                        "total_interest": _temp_interest,
+                        "wallet": _tx.wallet,
+                        "wallet_name": _tx.wallet_name,
+                        "pool": _tx.pool,
+                        "chain": _tx.chain,
+                    },
+                    # interest
+                    {
+                        "tokenSymbol": _tx.tokenSymbol,
+                        "hash": _tx.hash,
+                        "datetime": _tx.datetime,
+                        "action": "repay_interest",
+                        "transfer_from": _tx['from'],
+                        "transfer_to": _tx.transferTo,
+                        "amount": interest_amount,
+                        "total_borrows": _temp_borrows,
+                        "total_repayments": _temp_repayments + principal_amount + interest_amount,
+                        "total_interest": _temp_interest + interest_amount,
+                        "wallet": _tx.wallet,
+                        "wallet_name": _tx.wallet_name,
+                        "pool": _tx.pool,
+                        "chain": _tx.chain,
+                    },
+                ]
+            )
+        else:
+            principal_amount = amount
+            interest_amount = 0
+            row = pd.DataFrame(
+                [
+                    # principal
+                    {
+                        "tokenSymbol": _tx.tokenSymbol,
+                        "hash": _tx.hash,
+                        "datetime": _tx.datetime,
+                        "action": "repay_principal",
+                        "transfer_from": _tx['from'],
+                        "transfer_to": _tx.transferTo,
+                        "amount": principal_amount,
+                        "total_borrows": _temp_borrows,
+                        "total_repayments": _temp_repayments + principal_amount,
+                        "total_interest": _temp_interest,
+                        "wallet": _tx.wallet,
+                        "wallet_name": _tx.wallet_name,
+                        "pool": _tx.pool,
+                        "chain": _tx.chain,
+                    },
+                ]
+            )
+    else:
+        if _temp_repayments + amount > _temp_borrows: # only interest
+            interest_amount = amount
+            row = pd.DataFrame(
+                [
+                    # interest
+                    {
+                        "tokenSymbol": _tx.tokenSymbol,
+                        "hash": _tx.hash,
+                        "datetime": _tx.datetime,
+                        "action": "repay_interest",
+                        "transfer_from": _tx['from'],
+                        "transfer_to": _tx.transferTo,
+                        "amount": interest_amount,
+                        "total_borrows": _temp_borrows,
+                        "total_repayments": _temp_repayments + interest_amount,
+                        "total_interest": _temp_interest + interest_amount,
+                        "wallet": _tx.wallet,
+                        "wallet_name": _tx.wallet_name,
+                        "pool": _tx.pool,
+                        "chain": _tx.chain,
+                    },
+                ]
+            )
+        else: # interest and principal
+            interest_amount = _temp_borrows - _temp_repayments # interest amount is amount down to total borrows
+            principal_amount = amount - interest_amount # principal amount is the rest
+            
+            row = pd.DataFrame(
+                [
+                    # principal
+                    {
+                        "tokenSymbol": _tx.tokenSymbol,
+                        "hash": _tx.hash,
+                        "datetime": _tx.datetime,
+                        "action": "repay_principal",
+                        "transfer_from": _tx['from'],
+                        "transfer_to": _tx.transferTo,
+                        "amount": principal_amount,
+                        "total_borrows": _temp_borrows,
+                        "total_repayments": _temp_repayments + principal_amount,
+                        "total_interest": _temp_interest,
+                        "wallet": _tx.wallet,
+                        "wallet_name": _tx.wallet_name,
+                        "pool": _tx.pool,
+                        "chain": _tx.chain,
+                    },
+                    # interest
+                    {
+                        "tokenSymbol": _tx.tokenSymbol,
+                        "hash": _tx.hash,
+                        "datetime": _tx.datetime,
+                        "action": "repay_interest",
+                        "transfer_from": _tx['from'],
+                        "transfer_to": _tx.transferTo,
+                        "amount": interest_amount,
+                        "total_borrows": _temp_borrows,
+                        "total_repayments": _temp_repayments + interest_amount,
+                        "total_interest": _temp_interest + interest_amount,
+                        "wallet": _tx.wallet,
+                        "wallet_name": _tx.wallet_name,
+                        "pool": _tx.pool,
+                        "chain": _tx.chain,
+                    },
+                ]
+            )
+
+    return row, _temp_borrows, _temp_repayments + amount, _temp_interest + interest_amount
+
 
 def get_borrows_and_repayments(_pool_transfers):
     borrows_and_repayments = _pool_transfers[_pool_transfers.action.isin(['borrow','borrowETH','repay','repayETH'])].copy()
@@ -63,57 +262,11 @@ def get_borrows_and_repayments(_pool_transfers):
                 # for each transaction compute the amount in the pool and the interest withdrawn
                 temp_borrows = 0
                 temp_repayments = 0
+                temp_interest = 0
                 # loop over all the transactions for this token
                 for _, tx in temp_txs.iterrows():
-                    # increment borrows, withdrawals, and accrued interest
-                    amount = tx.amount_fixed
-                    if "ETH" in tx.action and tx.tokenSymbol == CHAINS[tx.chain]['base_token_symbol']:
-                        continue
-                    if tx.action in ["borrowETH", "borrow"]:
-                        temp_borrows += amount
-                    elif tx.action in ["repayETH", "repay"]:
-                        temp_repayments += amount
-                    temp_interest = max(temp_repayments - temp_borrows, 0)
-                    row = pd.DataFrame(
-                        [
-                            {
-                                "tokenSymbol": tx.tokenSymbol,
-                                "hash": tx.hash,
-                                "datetime": tx.datetime,
-                                "action": tx.action,
-                                "amount": amount,
-                                "total_borrows": temp_borrows,
-                                "total_repayments": temp_repayments,
-                                "total_interest_paid": temp_interest,
-                                "wallet": tx.wallet,
-                                "wallet_name": tx.wallet_name,
-                                "pool": tx.pool,
-                                "chain": tx.chain,
-                            }
-                        ]
-                    )
-                    if tx.action in ["borrowETH","repayETH"]:
-                        # etherscan API cant find internal raw ETH transfers so we need to 
-                        # manuallly add it based on the values from the variable debt token
-                        row_raw = pd.DataFrame(
-                            [
-                                {
-                                    "tokenSymbol": CHAINS[tx.chain]['base_token_symbol'],
-                                    "hash": tx.hash,
-                                    "datetime": tx.datetime,
-                                    "action": tx.action,
-                                    "amount": amount,
-                                    "total_borrows": temp_borrows,
-                                    "total_repayments": temp_repayments,
-                                    "total_interest_paid": temp_interest,
-                                    "wallet": tx.wallet,
-                                    "wallet_name": tx.wallet_name,
-                                    "pool": tx.pool,
-                                    "chain": tx.chain
-                                }
-                            ]
-                        )
-                        row = pd.concat([row, row_raw])
+                    row, temp_borrows, temp_repayments, temp_interest = handle_tx(tx, temp_borrows, temp_repayments, temp_interest)
+
                     balances = pd.concat([balances, row])
 
     return balances.sort_values(by=['wallet','chain','pool','tokenSymbol','datetime'])
@@ -121,99 +274,10 @@ def get_borrows_and_repayments(_pool_transfers):
 
 # given a dataframe of running totals for borrows and repayments
 # split out repayments that paid interest into multiple transactions
+# TODO: Fix for updated borrow and repayment logic
 def get_split_interest_txs_borrows(_borrows_and_repayments):
-    # look at repayments only
-    repayments = _borrows_and_repayments[
-        _borrows_and_repayments.action.isin(["repay", "repayETH"])
-    ].copy()
-    tokens = repayments.tokenSymbol.unique()  # get list of tokensj
-    wallets = repayments.wallet.unique()
-    pools = repayments.pool.unique()
-
-    split_txs = pd.DataFrame()
-
-    for wallet in wallets:
-        for pool in pools:
-            for token in tokens:
-                # get repayments for this wallet, pool, and token only
-                temp_repayments = repayments[
-                    (repayments.tokenSymbol == token)
-                    & (repayments.pool == pool)
-                    & (repayments.wallet == wallet)
-                ].sort_values(by="datetime")
-
-                prev_interest = 0
-                # loop over repayments for this token
-                for _, repayment in temp_repayments.iterrows():
-                    # if interest was gained in this tx...
-                    if repayment.total_interest_paid > prev_interest:
-                        # calculate interest and principal repayment
-                        this_interest = repayment.total_interest_paid - prev_interest
-                        this_principal = repayment.amount - this_interest
-                        prev_interest = repayment.total_interest_paid
-
-                        # construct two tx's for interest and principal repayment
-                        txs = pd.DataFrame(
-                            [
-                                # principal
-                                {
-                                    "tokenSymbol": repayment.tokenSymbol,
-                                    "hash": repayment.hash,
-                                    "datetime": repayment.datetime,
-                                    "action": "repay_principal",
-                                    "amount": this_principal,
-                                    "total_borrows": repayment.total_borrows,
-                                    "total_repayments": repayment.total_repayments,
-                                    "total_interest_paid": repayment.total_interest_paid
-                                    ,
-                                    "wallet": repayment.wallet,
-                                    "wallet_name": repayment.wallet_name,
-                                    "pool": repayment.pool,
-                                    "chain": repayment.chain,
-                                },
-                                # interest
-                                {
-                                    "tokenSymbol": repayment.tokenSymbol,
-                                    "hash": repayment.hash,
-                                    "datetime": repayment.datetime,
-                                    "action": "repay_interest",
-                                    "amount": this_interest,
-                                    "total_borrows": repayment.total_borrows,
-                                    "total_repayments": repayment.total_repayments,
-                                    "total_interest_paid": repayment.total_interest_paid
-                                    ,
-                                    "wallet": repayment.wallet,
-                                    "wallet_name": repayment.wallet_name,
-                                    "pool": repayment.pool,
-                                    "chain": repayment.chain,
-                                },
-                            ]
-                        )
-
-                        # concatenate to working dataframe
-                        split_txs = pd.concat([split_txs, txs])
-                    else:  # if only principal was repaid, concat just one tx
-                        this_principal = repayment.amount
-                        tx = pd.DataFrame(
-                            [
-                                {
-                                    "tokenSymbol": repayment.tokenSymbol,
-                                    "hash": repayment.hash,
-                                    "datetime": repayment.datetime,
-                                    "action": "repay_principal",
-                                    "amount": this_principal,
-                                    "total_borrows": repayment.total_borrows,
-                                    "total_repayments": repayment.total_repayments,
-                                    "total_interest_paid": repayment.total_interest_paid,
-                                    "wallet": repayment.wallet,
-                                    "wallet_name": repayment.wallet_name,
-                                    "pool": repayment.pool,
-                                    "chain": repayment.chain,
-                                }
-                            ]
-                        )
-                        split_txs = pd.concat([split_txs, tx])
-
+    split_txs = _borrows_and_repayments[_borrows_and_repayments.action.isin(['repay','repayETH'])].copy()
+    split_txs.reset_index(drop=True, inplace=True)
     return split_txs
 
 

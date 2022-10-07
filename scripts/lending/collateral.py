@@ -10,20 +10,223 @@ We provide functions to convert these initial two transactions into 3:
 2) $1M withdrawn
 3) $0.05M interest received
 """
-
-
 import pandas as pd
 
-from scripts.lending.lending_pools import get_pool_transfers
-from scripts.transactions import merge_transactions_and_token_transfers
-from scripts.utils import CHAINS, POOL_LIST
+pool_transfers = pd.read_csv("output_files/pool_transfers.csv") 
+deposit_tokens = [
+    "bAVAX",
+    "gFTM",
+    "amAAVE",
+    "amDAI",
+    "amUSDC",
+    "amUSDT",
+    "amWBTC",
+    "amWMATIC",
+    "aCRV",
+    "aLINK",
+    "aUSDC",
+    "aUSDT",
+    "aXSUSHI",
+    "aYFI",
+    "amWETH",
+]
 
-normal_transactions = pd.read_csv("output_files/normal_transactions.csv")
-token_transfers = pd.read_csv("output_files/token_transfers.csv")
-internal_transactions = pd.read_csv("output_files/internal_transactions.csv")
-all_transfers = merge_transactions_and_token_transfers(normal_transactions, token_transfers, internal_transactions)
-pool_transfers = get_pool_transfers(all_transfers, POOL_LIST)
 
+def _handle_tx(_tx, _temp_deposits, _temp_withdraws, _temp_interest):
+    if _tx.action in ['deposit','depositETH','supply', 'supplyETH']:
+        row = _handle_deposit(_tx, _temp_deposits, _temp_withdraws, _temp_interest)
+    elif _tx.action in ['withdraw','withdrawETH']:
+        row = _handle_withdraw(_tx, _temp_deposits, _temp_withdraws, _temp_interest)
+
+    return row
+
+
+def _handle_deposit(_tx, _temp_deposits, _temp_withdraws, _temp_interest):
+    # check if amount is to us or from us
+    amount = _tx.amount_fixed
+    if _tx['from'] == _tx.wallet:
+        amount = amount
+    elif _tx.transferTo == _tx.wallet:
+        amount = -amount
+    else:
+        raise Exception(f"transfer is neither to nor from one of our wallets")
+    if _tx.tokenSymbol in deposit_tokens:
+        amount = -amount
+
+    new_deposits = _temp_deposits + amount
+    row = pd.DataFrame(
+        [
+            {
+                "tokenSymbol": _tx.tokenSymbol,
+                "hash": _tx.hash,
+                "datetime": _tx.datetime,
+                "action": "deposit",
+                "transfer_from": _tx['from'],
+                "transfer_to": _tx.transferTo,
+                "amount": amount,
+                "total_deposits": new_deposits,
+                "total_withdraws": _temp_withdraws,
+                "total_interest": _temp_interest,
+                "wallet": _tx.wallet,
+                "wallet_name": _tx.wallet_name,
+                "pool": _tx.pool,
+                "chain": _tx.chain,
+            },
+        ]
+    )
+
+    return row, new_deposits, _temp_withdraws, _temp_interest
+
+
+def _handle_withdraw(_tx, _temp_deposits, _temp_withdraws, _temp_interest):
+    amount = _tx.amount_fixed
+
+    # TODO: we need a way to deal with a tokens since they are moving in 
+    # the opposite direction as the main tokens
+    if _tx.transferTo == _tx.wallet:
+        amount = amount
+    elif _tx['from'] == _tx.wallet:
+        amount = -amount 
+    else:
+        raise Exception(f"transfer is neither to nor from one of our wallets {_tx.hash}")
+    if _tx.tokenSymbol in deposit_tokens:
+        amount = -amount
+
+    if _temp_withdraws < _temp_deposits: # there is principal
+        if _temp_withdraws + amount > _temp_deposits + _temp_interest: # also interest
+            principal_amount = _temp_deposits + _temp_interest - _temp_withdraws
+            interest_amount = amount - principal_amount
+            
+            row = pd.DataFrame(
+                [
+                    # principal
+                    {
+                        "tokenSymbol": _tx.tokenSymbol,
+                        "hash": _tx.hash,
+                        "datetime": _tx.datetime,
+                        "action": "withdraw_principal",
+                        "transfer_from": _tx['from'],
+                        "transfer_to": _tx.transferTo,
+                        "amount": principal_amount,
+                        "total_deposits": _temp_deposits,
+                        "total_withdraws": _temp_withdraws + principal_amount,
+                        "total_interest": _temp_interest,
+                        "wallet": _tx.wallet,
+                        "wallet_name": _tx.wallet_name,
+                        "pool": _tx.pool,
+                        "chain": _tx.chain,
+                    },
+                    # interest
+                    {
+                        "tokenSymbol": _tx.tokenSymbol,
+                        "hash": _tx.hash,
+                        "datetime": _tx.datetime,
+                        "action": "withdraw_interest",
+                        "transfer_from": _tx['from'],
+                        "transfer_to": _tx.transferTo,
+                        "amount": interest_amount,
+                        "total_deposits": _temp_deposits,
+                        "total_withdraws": _temp_withdraws + principal_amount + interest_amount,
+                        "total_interest": _temp_interest + interest_amount,
+                        "wallet": _tx.wallet,
+                        "wallet_name": _tx.wallet_name,
+                        "pool": _tx.pool,
+                        "chain": _tx.chain,
+                    },
+                ]
+            )
+        else: 
+            principal_amount = amount
+            interest_amount = 0
+            row = pd.DataFrame(
+                [
+                    # principal
+                    {
+                        "tokenSymbol": _tx.tokenSymbol,
+                        "hash": _tx.hash,
+                        "datetime": _tx.datetime,
+                        "action": "withdraw_principal",
+                        "transfer_from": _tx['from'],
+                        "transfer_to": _tx.transferTo,
+                        "amount": principal_amount,
+                        "total_deposits": _temp_deposits,
+                        "total_withdraws": _temp_withdraws + principal_amount,
+                        "total_interest": _temp_interest,
+                        "wallet": _tx.wallet,
+                        "wallet_name": _tx.wallet_name,
+                        "pool": _tx.pool,
+                        "chain": _tx.chain,
+                    },
+                ]
+            )
+    else:
+        if _temp_withdraws + amount > _temp_deposits: # only interest
+            interest_amount = amount
+            row = pd.DataFrame(
+                [
+                    # interest
+                    {
+                        "tokenSymbol": _tx.tokenSymbol,
+                        "hash": _tx.hash,
+                        "datetime": _tx.datetime,
+                        "action": "withdraw_interest",
+                        "transfer_from": _tx['from'],
+                        "transfer_to": _tx.transferTo,
+                        "amount": interest_amount,
+                        "total_deposits": _temp_deposits,
+                        "total_withdraws": _temp_withdraws + interest_amount,
+                        "total_interest": _temp_interest + interest_amount,
+                        "wallet": _tx.wallet,
+                        "wallet_name": _tx.wallet_name,
+                        "pool": _tx.pool,
+                        "chain": _tx.chain,
+                    },
+                ]
+            )
+        else: # interest and principal
+            interest_amount = _temp_deposits - _temp_withdraws # interest amount is amount down to total borrows
+            principal_amount = amount - interest_amount # principal amount is the rest
+            
+            row = pd.DataFrame(
+                [
+                    # principal
+                    {
+                        "tokenSymbol": _tx.tokenSymbol,
+                        "hash": _tx.hash,
+                        "datetime": _tx.datetime,
+                        "action": "withdraw_principal",
+                        "transfer_from": _tx['from'],
+                        "transfer_to": _tx.transferTo,
+                        "amount": principal_amount,
+                        "total_deposits": _temp_deposits,
+                        "total_withdraws": _temp_withdraws + principal_amount,
+                        "total_interest": _temp_interest,
+                        "wallet": _tx.wallet,
+                        "wallet_name": _tx.wallet_name,
+                        "pool": _tx.pool,
+                        "chain": _tx.chain,
+                    },
+                    # interest
+                    {
+                        "tokenSymbol": _tx.tokenSymbol,
+                        "hash": _tx.hash,
+                        "datetime": _tx.datetime,
+                        "action": "withdraw_interest",
+                        "transfer_from": _tx['from'],
+                        "transfer_to": _tx.transferTo,
+                        "amount": interest_amount,
+                        "total_deposits": _temp_deposits,
+                        "total_withdraws": _temp_withdraws + interest_amount,
+                        "total_interest": _temp_interest + interest_amount,
+                        "wallet": _tx.wallet,
+                        "wallet_name": _tx.wallet_name,
+                        "pool": _tx.pool,
+                        "chain": _tx.chain,
+                    },
+                ]
+            )
+
+    return row, _temp_deposits, _temp_withdraws + amount, _temp_interest + interest_amount
 
 # get deposits and withdrawals from the list of all transfers and the transfers with lending pools
 def get_deposits_and_withdrawals(_pool_transfers):
@@ -47,57 +250,11 @@ def get_deposits_and_withdrawals(_pool_transfers):
                 # for each transaction compute the amount in the pool and the interest withdrawn
                 temp_deposits = 0
                 temp_withdraws = 0
+                temp_interest = 0
                 # loop over all the transactions for this token
                 for _, tx in temp_txs.iterrows():
                     # increment deposits, withdrawals, and accrued interest
-                    amount = tx.amount_fixed
-                    if "ETH" in tx.action and tx.tokenSymbol == CHAINS[tx.chain]['base_token_symbol']:
-                        continue
-                    if tx.action in ["supply","depositETH","deposit"]:
-                        temp_deposits += amount
-                    elif tx.action in ["withdrawETH","withdraw"]:
-                        temp_withdraws += amount
-                    temp_interest = max(temp_withdraws - temp_deposits, 0)
-                    row = pd.DataFrame(
-                        [
-                            {
-                                "tokenSymbol": tx.tokenSymbol,
-                                "hash": tx.hash,
-                                "datetime": tx.datetime,
-                                "action": tx.action,
-                                "amount": amount,
-                                "total_deposits": temp_deposits,
-                                "total_withdraws": temp_withdraws,
-                                "total_interest_received": temp_interest,
-                                "wallet": tx.wallet,
-                                "wallet_name": tx.wallet_name,
-                                "pool": tx.pool,
-                                "chain": tx.chain,
-                            }
-                        ]
-                    )
-                    if tx.action in ["withdrawETH","depositETH"]: 
-                        # etherscan API can't find the internal raw ETH transfers so we need to 
-                        # manually add them based on the values from the amWETH token
-                        row_raw = pd.DataFrame(
-                            [
-                                {
-                                    "tokenSymbol": CHAINS[tx.chain]['base_token_symbol'],
-                                    "hash": tx.hash,
-                                    "datetime": tx.datetime,
-                                    "action": tx.action,
-                                    "amount": amount,
-                                    "total_deposits": temp_deposits,
-                                    "total_withdraws": temp_withdraws,
-                                    "total_interest_received": temp_interest,
-                                    "wallet": tx.wallet,
-                                    "wallet_name": tx.wallet_name,
-                                    "pool": tx.pool,
-                                    "chain": tx.chain
-                                }
-                            ]
-                        )
-                        row = pd.concat([row, row_raw])
+                    row, temp_deposits, temp_withdraws, temp_interest = _handle_tx(tx, temp_deposits, temp_withdraws, temp_interest)
                     balances = pd.concat([balances, row])
 
     return balances.sort_values(by=['wallet','chain','pool','tokenSymbol','datetime'])
@@ -106,96 +263,9 @@ def get_deposits_and_withdrawals(_pool_transfers):
 # given a dataframe of running totals for deposits and withdrawals
 # split out withdraws that received interest into multiple transactions
 def get_split_interest_txs_collateral(_deposits_and_withdrawals):
-    # look at withdrawals only
-    withdrawals = _deposits_and_withdrawals[
-        _deposits_and_withdrawals.action.isin(["withdraw","withdrawETH"])
-    ].copy()
-    tokens = withdrawals.tokenSymbol.unique()  # get list of tokensj
-    wallets = withdrawals.wallet.unique()
-    pools = withdrawals.pool.unique()
-
-    split_txs = pd.DataFrame()
-    for wallet in wallets:
-        for pool in pools:
-            for token in tokens:
-                # get withdraws for this token only
-                temp_withdraws = withdrawals[
-                    (withdrawals.tokenSymbol == token)
-                    & (withdrawals.pool == pool)
-                    & (withdrawals.wallet == wallet)
-                ].sort_values(by="datetime")
-
-                prev_interest = 0
-                # loop over withdraws for this token
-                for _, withdraw in temp_withdraws.iterrows():
-                    # if interest was gained in this tx...
-                    if withdraw.total_interest_received > prev_interest:
-                        # calculate interest and principal withdraw
-                        this_interest = (
-                            withdraw.total_interest_received - prev_interest
-                        )
-                        this_principal = withdraw.amount - this_interest
-                        prev_interest = withdraw.total_interest_received
-
-                        # construct two tx's for interest and principal withdrawals
-                        txs = pd.DataFrame(
-                            [
-                                {
-                                    "tokenSymbol": withdraw.tokenSymbol,
-                                    "hash": withdraw.hash,
-                                    "datetime": withdraw.datetime,
-                                    "action": "withdraw_principal",
-                                    "amount": this_principal,
-                                    "total_deposits": withdraw.total_deposits,
-                                    "total_withdraws": withdraw.total_withdraws,
-                                    "total_interest_received": withdraw.total_interest_received,
-                                    "wallet": withdraw.wallet,
-                                    "wallet_name": withdraw.wallet_name,
-                                    "pool": withdraw.pool,
-                                    "chain": withdraw.chain,
-                                },
-                                {
-                                    "tokenSymbol": withdraw.tokenSymbol,
-                                    "hash": withdraw.hash,
-                                    "datetime": withdraw.datetime,
-                                    "action": "withdraw_interest",
-                                    "amount": this_interest,
-                                    "total_deposits": withdraw.total_deposits,
-                                    "total_withdraws": withdraw.total_withdraws,
-                                    "total_interest_received": withdraw.total_interest_received,
-                                    "wallet": withdraw.wallet,
-                                    "wallet_name": withdraw.wallet_name,
-                                    "pool": withdraw.pool,
-                                    "chain": withdraw.chain,
-                                },
-                            ]
-                        )
-
-                        # concatenate to working dataframe
-                        split_txs = pd.concat([split_txs, txs])
-                    else:  # if only principal was withdrawn, concat just one tx
-                        this_principal = withdraw.amount
-                        tx = pd.DataFrame(
-                            [
-                                {
-                                    "tokenSymbol": withdraw.tokenSymbol,
-                                    "hash": withdraw.hash,
-                                    "datetime": withdraw.datetime,
-                                    "action": "withdraw_principal",
-                                    "amount": this_principal,
-                                    "total_deposits": withdraw.total_deposits,
-                                    "total_withdraws": withdraw.total_withdraws,
-                                    "total_interest_received": withdraw.total_interest_received,
-                                    "wallet": withdraw.wallet,
-                                    "wallet_name": withdraw.wallet_name,
-                                    "pool": withdraw.pool,
-                                    "chain": withdraw.chain,
-                                }
-                            ]
-                        )
-                        split_txs = pd.concat([split_txs, tx])
-
+    split_txs = _deposits_and_withdrawals[_deposits_and_withdrawals.action.isin(['withdraw','withdrawETH'])]
     split_txs.reset_index(drop=True, inplace=True)
+
     return split_txs
 
 

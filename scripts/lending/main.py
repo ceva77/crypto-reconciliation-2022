@@ -8,7 +8,7 @@ from scripts.transactions import (
     merge_transactions_and_token_transfers
 )
 from scripts.lending.split import get_deposits_and_borrows
-from scripts.lending.print import filter_deposits_and_withdrawals, filter_borrows_and_repayments, filter_split_txs
+from scripts.lending.filter import filter_deposits_and_withdrawals, filter_borrows_and_repayments, filter_split_txs
 from scripts.utils import CHAIN_LIST, WALLET_LIST, POOL_LIST
 
 

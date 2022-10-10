@@ -319,7 +319,7 @@ def merge_transactions_and_token_transfers(_normal_transactions, _token_transfer
     token_transfers.reset_index(drop=True, inplace=True)
 
     merged_transfers = token_transfers.merge(
-        _normal_transactions, how="left", on="hash", suffixes=(None, "_tx")
+        _normal_transactions, how="left", on=["hash","wallet"], suffixes=(None, "_tx")
     )
 
     merged_transfers = merged_transfers[

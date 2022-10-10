@@ -1,23 +1,6 @@
 import pandas as pd
 
 deposits_and_borrows = pd.read_csv("output_files/lending/deposits_and_borrows.csv")
-deposit_tokens = [
-    "bAVAX",
-    "gFTM",
-    "amAAVE",
-    "amDAI",
-    "amUSDC",
-    "amUSDT",
-    "amWBTC",
-    "amWMATIC",
-    "aCRV",
-    "aLINK",
-    "aUSDC",
-    "aUSDT",
-    "aXSUSHI",
-    "aYFI",
-    "amWETH",
-]
 
 
 # return deposits and withdrawals only from the deposits and borrows
@@ -48,6 +31,7 @@ def filter_split_txs(_deposits_and_borrows):
     split_txs = _deposits_and_borrows[_deposits_and_borrows.action.isin[tx_types]].copy()
 
     return split_txs
+
 
 # split txs by accounts between wallets and chain to match lukka system for accounts
 def print_txs_by_account(_deposits_and_borrows):

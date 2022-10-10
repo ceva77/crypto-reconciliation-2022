@@ -1,13 +1,11 @@
 import pandas as pd
 
-from scripts.lending.lending_pools import get_pool_transfers
 from scripts.transactions import merge_transactions_and_token_transfers
 from scripts.utils import CHAINS, POOL_LIST
 
 normal_transactions = pd.read_csv("output_files/normal_transactions.csv")
 token_transfers = pd.read_csv("output_files/token_transfers.csv")
 all_transfers = merge_transactions_and_token_transfers(normal_transactions, token_transfers)
-pool_transfers = get_pool_transfers(all_transfers, POOL_LIST)
 
 
 # format the split transactions dataframe to have the right columns for uploading to Lukka

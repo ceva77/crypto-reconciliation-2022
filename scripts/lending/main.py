@@ -7,15 +7,8 @@ from scripts.transactions import (
     get_internal_transactions, 
     merge_transactions_and_token_transfers
 )
-from scripts.lending.lending_pools import get_pool_transfers
-from scripts.lending.collateral import (
-    get_deposits_and_withdrawals,
-    get_split_interest_txs_collateral,
-)
-from scripts.lending.borrowing import (
-    get_borrows_and_repayments,
-    get_split_interest_txs_borrows,
-)
+from scripts.lending.split import get_deposits_and_borrows
+from scripts.lending.print import filter_deposits_and_withdrawals, filter_borrows_and_repayments, filter_split_txs
 from scripts.utils import CHAIN_LIST, WALLET_LIST, POOL_LIST
 
 
@@ -44,26 +37,17 @@ def build_lending_excel_sheet(_wallets, _pools, _chains, verbose=False):
 
     # get all the relevant dataframes
     if verbose:
-        print("Getting lending pool transfers")
-    pool_transfers = get_pool_transfers(all_transfers, _pools)
-    print(f"Found {len(pool_transfers)} lending pool transfers")
-
-    if verbose:
         print("Getting collateral and borrow history")
-    deposits_and_withdrawals = get_deposits_and_withdrawals(pool_transfers)
-    print(f"{len(deposits_and_withdrawals)} deposits and withdrawals")
-    borrows_and_repayments = get_borrows_and_repayments(pool_transfers)
-    print(f"{len(borrows_and_repayments)} borrows and repayments")
+    deposits_and_borrows = get_deposits_and_borrows(all_transfers, POOL_LIST)
 
     if verbose:
-        print("Splitting principal and interest transactions")
-    split_interest_txs_collateral = get_split_interest_txs_collateral(
-        deposits_and_withdrawals
+        print("Filtering collateral and borrowing transactions")
+    deposits_and_withdrawals = filter_deposits_and_withdrawals(
+        deposits_and_borrows
     )
-    split_interest_txs_borrows = get_split_interest_txs_borrows(borrows_and_repayments)
-    print(
-        f"{len(split_interest_txs_borrows)+len(split_interest_txs_collateral)} total split principal and interest payments"
-    )
+    borrows_and_repayments = filter_borrows_and_repayments(deposits_and_borrows)
+
+    split_txs = filter_split_txs(deposits_and_borrows) 
 
     # put everything to excel
     path = f"output_files/lending/aave_lending_{date.today()}.xlsx"
@@ -75,20 +59,14 @@ def build_lending_excel_sheet(_wallets, _pools, _chains, verbose=False):
             writer, sheet_name="normal_transactions", index=False
         )
         all_transfers.to_excel(writer, sheet_name="all_transfers")
-        pool_transfers.to_excel(
-            writer, sheet_name="lending_pool_transfers", index=False
-        )
         deposits_and_withdrawals.to_excel(
             writer, sheet_name="deposits_and_withdrawals", index=False
-        )
-        split_interest_txs_collateral.to_excel(
-            writer, sheet_name="split_interest_txs_collateral", index=False
         )
         borrows_and_repayments.to_excel(
             writer, sheet_name="borrows_and_repayments", index=False
         )
-        split_interest_txs_borrows.to_excel(
-            writer, sheet_name="split_interest_txs_borrows", index=False
+        split_txs.to_excel(
+            writer, sheet_name="split_txs", index=False
         )
         if verbose:
             print("Done!")

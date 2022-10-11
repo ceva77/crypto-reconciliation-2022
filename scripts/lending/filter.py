@@ -61,6 +61,3 @@ def print_txs_by_account(_deposits_and_borrows):
 
 def main():
     print_txs_by_account(deposits_and_borrows)
-
-
-

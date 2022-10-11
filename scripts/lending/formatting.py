@@ -53,8 +53,3 @@ def format_split_txs(split_txs):
 
     # need to convert the columns from split_txs to the columns for lukka
     # but don't have a way to figure out what to put in the columns for lukka
-
-
-    
-
-

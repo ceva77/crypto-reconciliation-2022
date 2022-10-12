@@ -1,8 +1,8 @@
 import pandas as pd
 
-from scripts.transactions import all_transfers
-from scripts.utils import POOL_LIST
+from scripts.utils import POOL_LIST, CHAINS
 
+all_transfers = pd.read_csv("output_files/all_transfers.csv")
 deposit_tokens = [
     "bAVAX",
     "gFTM",
@@ -27,7 +27,8 @@ action_categories = {
     "borrow": 1,
     "repay_principal": 1,
     "repay_interest": 1,
-    "dummy_income": 2
+    "dummy_income": 2,
+    "gas_fee": 2,
 }
 
 
@@ -57,7 +58,7 @@ def _handle_deposit(_tx, _temp_deposits, _temp_withdraws, _temp_interest):
     else:
         raise Exception(f"transfer is neither to nor from one of our wallets")
     if _tx.tokenSymbol in deposit_tokens:
-        amount = -amount
+        return _handle_borrow(_tx, _temp_deposits, _temp_withdraws, _temp_interest)
 
     new_deposits = _temp_deposits + amount
     row = pd.DataFrame(
@@ -67,7 +68,8 @@ def _handle_deposit(_tx, _temp_deposits, _temp_withdraws, _temp_interest):
                 "hash": _tx.hash,
                 "datetime": _tx.datetime,
                 "action": "deposit",
-                "transfer_from": _tx['from'],
+                "from": _tx['from'],
+                "transfer_from": _tx.transferFrom,
                 "transfer_to": _tx.transferTo,
                 "amount": amount,
                 "total_deposits": new_deposits,
@@ -96,7 +98,7 @@ def _handle_withdraw(_tx, _temp_deposits, _temp_withdraws, _temp_interest):
     else:
         raise Exception(f"transfer is neither to nor from one of our wallets {_tx.hash}")
     if _tx.tokenSymbol in deposit_tokens:
-        amount = -amount
+        return _handle_repay(_tx, _temp_deposits, _temp_withdraws, _temp_interest)
 
     if _temp_withdraws < _temp_deposits: # there is principal
         if _temp_withdraws + amount > _temp_deposits + _temp_interest: # also interest
@@ -111,7 +113,8 @@ def _handle_withdraw(_tx, _temp_deposits, _temp_withdraws, _temp_interest):
                         "hash": _tx.hash,
                         "datetime": _tx.datetime,
                         "action": "withdraw_principal",
-                        "transfer_from": _tx['from'],
+                        "from": _tx['from'],
+                        "transfer_from": _tx.transferFrom,
                         "transfer_to": _tx.transferTo,
                         "amount": principal_amount,
                         "total_deposits": _temp_deposits,
@@ -128,7 +131,8 @@ def _handle_withdraw(_tx, _temp_deposits, _temp_withdraws, _temp_interest):
                         "hash": _tx.hash,
                         "datetime": _tx.datetime,
                         "action": "withdraw_interest",
-                        "transfer_from": _tx['from'],
+                        "from": _tx['from'],
+                        "transfer_from": _tx.transferFrom,
                         "transfer_to": _tx.transferTo,
                         "amount": interest_amount,
                         "total_deposits": _temp_deposits,
@@ -152,7 +156,8 @@ def _handle_withdraw(_tx, _temp_deposits, _temp_withdraws, _temp_interest):
                         "hash": _tx.hash,
                         "datetime": _tx.datetime,
                         "action": "withdraw_principal",
-                        "transfer_from": _tx['from'],
+                        "from": _tx['from'],
+                        "transfer_from": _tx.transferFrom,
                         "transfer_to": _tx.transferTo,
                         "amount": principal_amount,
                         "total_deposits": _temp_deposits,
@@ -176,7 +181,8 @@ def _handle_withdraw(_tx, _temp_deposits, _temp_withdraws, _temp_interest):
                         "hash": _tx.hash,
                         "datetime": _tx.datetime,
                         "action": "withdraw_interest",
-                        "transfer_from": _tx['from'],
+                        "from": _tx['from'],
+                        "transfer_from": _tx.transferFrom,
                         "transfer_to": _tx.transferTo,
                         "amount": interest_amount,
                         "total_deposits": _temp_deposits,
@@ -201,7 +207,8 @@ def _handle_withdraw(_tx, _temp_deposits, _temp_withdraws, _temp_interest):
                         "hash": _tx.hash,
                         "datetime": _tx.datetime,
                         "action": "withdraw_principal",
-                        "transfer_from": _tx['from'],
+                        "from": _tx['from'],
+                        "transfer_from": _tx.transferFrom,
                         "transfer_to": _tx.transferTo,
                         "amount": principal_amount,
                         "total_deposits": _temp_deposits,
@@ -218,7 +225,8 @@ def _handle_withdraw(_tx, _temp_deposits, _temp_withdraws, _temp_interest):
                         "hash": _tx.hash,
                         "datetime": _tx.datetime,
                         "action": "withdraw_interest",
-                        "transfer_from": _tx['from'],
+                        "from": _tx['from'],
+                        "transfer_from": _tx.transferFrom,
                         "transfer_to": _tx.transferTo,
                         "amount": interest_amount,
                         "total_deposits": _temp_deposits,
@@ -255,7 +263,8 @@ def _handle_borrow(_tx, _temp_borrows, _temp_repayments, _temp_interest):
                 "hash": _tx.hash,
                 "datetime": _tx.datetime,
                 "action": "borrow",
-                "transfer_from": _tx['from'],
+                "from": _tx['from'],
+                "transfer_from": _tx.transferFrom,
                 "transfer_to": _tx.transferTo,
                 "amount": amount,
                 "total_borrows": new_borrows,
@@ -297,7 +306,8 @@ def _handle_repay(_tx, _temp_borrows, _temp_repayments, _temp_interest):
                         "hash": _tx.hash,
                         "datetime": _tx.datetime,
                         "action": "repay_principal",
-                        "transfer_from": _tx['from'],
+                        "from": _tx['from'],
+                        "transfer_from": _tx.transferFrom,
                         "transfer_to": _tx.transferTo,
                         "amount": principal_amount,
                         "total_borrows": _temp_borrows,
@@ -314,7 +324,8 @@ def _handle_repay(_tx, _temp_borrows, _temp_repayments, _temp_interest):
                         "hash": _tx.hash,
                         "datetime": _tx.datetime,
                         "action": "repay_interest",
-                        "transfer_from": _tx['from'],
+                        "from": _tx['from'],
+                        "transfer_from": _tx.transferFrom,
                         "transfer_to": _tx.transferTo,
                         "amount": interest_amount,
                         "total_borrows": _temp_borrows,
@@ -338,7 +349,8 @@ def _handle_repay(_tx, _temp_borrows, _temp_repayments, _temp_interest):
                         "hash": _tx.hash,
                         "datetime": _tx.datetime,
                         "action": "repay_principal",
-                        "transfer_from": _tx['from'],
+                        "from": _tx['from'],
+                        "transfer_from": _tx.transferFrom,
                         "transfer_to": _tx.transferTo,
                         "amount": principal_amount,
                         "total_borrows": _temp_borrows,
@@ -362,7 +374,8 @@ def _handle_repay(_tx, _temp_borrows, _temp_repayments, _temp_interest):
                         "hash": _tx.hash,
                         "datetime": _tx.datetime,
                         "action": "repay_interest",
-                        "transfer_from": _tx['from'],
+                        "from": _tx['from'],
+                        "transfer_from": _tx.transferFrom,
                         "transfer_to": _tx.transferTo,
                         "amount": interest_amount,
                         "total_borrows": _temp_borrows,
@@ -387,7 +400,8 @@ def _handle_repay(_tx, _temp_borrows, _temp_repayments, _temp_interest):
                         "hash": _tx.hash,
                         "datetime": _tx.datetime,
                         "action": "repay_principal",
-                        "transfer_from": _tx['from'],
+                        "from": _tx['from'],
+                        "transfer_from": _tx.transferFrom,
                         "transfer_to": _tx.transferTo,
                         "amount": principal_amount,
                         "total_borrows": _temp_borrows,
@@ -404,7 +418,8 @@ def _handle_repay(_tx, _temp_borrows, _temp_repayments, _temp_interest):
                         "hash": _tx.hash,
                         "datetime": _tx.datetime,
                         "action": "repay_interest",
-                        "transfer_from": _tx['from'],
+                        "from": _tx['from'],
+                        "transfer_from": _tx.transferFrom,
                         "transfer_to": _tx.transferTo,
                         "amount": interest_amount,
                         "total_borrows": _temp_borrows,
@@ -428,11 +443,14 @@ def _add_dummy_transactions(_deposits_and_borrows):
     ].copy()
     variable_debt_txs.reset_index(drop=True, inplace=True)
     variable_debt_txs['action'] = 'dummy_income'
+    temp = variable_debt_txs['transfer_to']
+    variable_debt_txs['transfer_to'] = variable_debt_txs['transfer_from']
+    variable_debt_txs['transfer_from'] = temp
     variable_debt_txs['hash'] = [f"{hash}-dummy" for hash in variable_debt_txs.hash]
 
     a_txs = _deposits_and_borrows[
         (_deposits_and_borrows['tokenSymbol'].isin(deposit_tokens))&
-        (_deposits_and_borrows['action'] == 'withdraw_interest')
+        (_deposits_and_borrows['action'] == 'repay_interest')
     ].copy()
     a_txs.reset_index(drop=True, inplace=True)
     a_txs['action'] = "dummy_income"
@@ -447,9 +465,42 @@ def _add_dummy_transactions(_deposits_and_borrows):
     return _deposits_and_borrows
 
 
+# add tx's for the gas fees
+def calc_gas_fees(_pool_transfers):
+    # only use one gas fee per transaction hash
+    _pool_transfers = _pool_transfers.drop_duplicates(subset=['hash'])
+    gas_fees = pd.DataFrame()
+    for _, _tx in _pool_transfers.iterrows():
+        chain = _tx.chain
+
+        # the gas paid is the price times gas used, adjusted by decimals
+        fee_amount = _tx.gasPrice * _tx.gasUsed / (10**CHAINS[chain]['base_token_decimals'])
+        row = pd.DataFrame(
+            [
+                {
+                    "tokenSymbol": CHAINS[chain]['base_token_symbol'],
+                    "hash": _tx.hash,
+                    "datetime": _tx.datetime,
+                    "action": "gas_fee",
+                    "transfer_from": _tx['from'],
+                    "transfer_to": "0x0000000000000000000000000000000000000000", # always send gas to zero address
+                    "amount": fee_amount,
+                    "from": _tx['from'],
+                    "wallet": _tx.wallet,
+                    "wallet_name": _tx.wallet_name,
+                    "pool": _tx.to,
+                    "chain": _tx.chain,
+                }
+            ]
+        )
+        gas_fees = pd.concat([gas_fees, row])
+        
+    return gas_fees
+
+
 
 # get transfers with tx going to these pools
-def _get_pool_transfers(_transfers, _pools):
+def get_pool_transfers(_transfers, _pools):
     pool_transfers = _transfers[_transfers.to.str.lower().isin(_pools)].copy()
     pool_transfers.reset_index(drop=True, inplace=True)
 
@@ -458,14 +509,15 @@ def _get_pool_transfers(_transfers, _pools):
 
 # find, format and calculate for all split transacitons from all transfers for a list of pools 
 def get_deposits_and_borrows(_transfers, _pools):
-    _pool_transfers = _get_pool_transfers(_transfers, _pools)
+    _pool_transfers = get_pool_transfers(_transfers, _pools)
+    gas_fees = calc_gas_fees(_pool_transfers)
 
     _pool_transfers['pool'] = _pool_transfers.to
     tokens = _pool_transfers.tokenSymbol.unique()
     wallets = _pool_transfers.wallet.unique()
     pools = _pool_transfers.to.unique()
 
-    deposits_and_borrows = pd.DataFrame()
+    deposits_and_borrows = gas_fees.copy()
     for wallet in wallets:
         for pool in pools:
             for token in tokens:

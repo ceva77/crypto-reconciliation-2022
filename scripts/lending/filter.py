@@ -3,12 +3,25 @@ import pandas as pd
 deposits_and_borrows = pd.read_csv("output_files/lending/deposits_and_borrows.csv")
 
 
+# helper function to extract out all the gas fees for the filtered transactions 
+def _find_gas_fees(_deposits_and_borrows, _filtered_df):
+    gas_fees = _deposits_and_borrows[
+        (_deposits_and_borrows.action == 'gas_fee') &
+        (_deposits_and_borrows.hash.isin(_filtered_df.hash.unique().tolist()))
+    ].copy()
+
+    return gas_fees
+    
+
 # return deposits and withdrawals only from the deposits and borrows
 def filter_deposits_and_withdrawals(_deposits_and_borrows):
     tx_types = ['deposit','withdraw_interest','withdraw_principal']
 
     deposits_and_withdrawals = _deposits_and_borrows[_deposits_and_borrows.action.isin(tx_types)].copy()
     deposits_and_withdrawals.reset_index(drop=True, inplace=True)
+
+    gas_fees = _find_gas_fees(_deposits_and_borrows, deposits_and_withdrawals)
+    deposits_and_withdrawals = pd.concat([deposits_and_withdrawals, gas_fees])
 
     return deposits_and_withdrawals
 
@@ -20,6 +33,9 @@ def filter_borrows_and_repayments(_deposits_and_borrows):
     borrows_and_repayments = _deposits_and_borrows[_deposits_and_borrows.action.isin(tx_types)].copy()
     borrows_and_repayments.reset_index(drop=True, inplace=True)
 
+    gas_fees = _find_gas_fees(_deposits_and_borrows, borrows_and_repayments)
+    borrows_and_repayments = pd.concat([borrows_and_repayments, gas_fees])
+
     return borrows_and_repayments
 
 
@@ -28,7 +44,10 @@ def filter_split_txs(_deposits_and_borrows):
     tx_types = [
         'repay_principal','repay_interest','dummy_income','withdraw_principal','withdraw_interest'
     ]
-    split_txs = _deposits_and_borrows[_deposits_and_borrows.action.isin[tx_types]].copy()
+    split_txs = _deposits_and_borrows[_deposits_and_borrows.action.isin(tx_types)].copy()
+
+    gas_fees = _find_gas_fees(_deposits_and_borrows, split_txs)
+    split_txs = pd.concat([split_txs, gas_fees])
 
     return split_txs
 
@@ -52,7 +71,7 @@ def print_txs_by_account(_deposits_and_borrows):
             ]
             # output txs to separate csv if the filter is non-empty
             if not these_txs.empty:
-                these_txs.to_csv(f'output_files/finals/{wallet_name}_{chain}.csv', index=False)
+                these_txs.to_csv(f'output_files/split_txs/{wallet_name}_{chain}.csv', index=False)
                 total_txs_check += len(these_txs)
 
     # transactions added must equal total transactions in starting dataframe

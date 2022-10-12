@@ -1,5 +1,7 @@
 import pandas as pd
 
+from scripts.lending.formatting import format_split_txs 
+
 deposits_and_borrows = pd.read_csv("output_files/lending/deposits_and_borrows.csv")
 
 
@@ -46,6 +48,7 @@ def filter_split_txs(_deposits_and_borrows):
     ]
     split_txs = _deposits_and_borrows[_deposits_and_borrows.action.isin(tx_types)].copy()
 
+    # need to be able to find the gas fees for just these txs
     gas_fees = _find_gas_fees(_deposits_and_borrows, split_txs)
     split_txs = pd.concat([split_txs, gas_fees])
 
@@ -71,6 +74,7 @@ def print_txs_by_account(_deposits_and_borrows):
             ]
             # output txs to separate csv if the filter is non-empty
             if not these_txs.empty:
+                these_txs = format_split_txs(these_txs)
                 these_txs.to_csv(f'output_files/split_txs/{wallet_name}_{chain}.csv', index=False)
                 total_txs_check += len(these_txs)
 

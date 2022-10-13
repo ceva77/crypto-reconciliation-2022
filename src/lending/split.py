@@ -1,6 +1,6 @@
 import pandas as pd
 
-from scripts.utils import POOL_LIST, CHAINS
+from src.utils import POOL_LIST, CHAINS
 
 all_transfers = pd.read_csv("output_files/all_transfers.csv")
 deposit_tokens = [

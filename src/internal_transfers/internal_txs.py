@@ -1,5 +1,5 @@
-from scripts.transactions import get_normal_transactions
-from scripts.utils import WALLET_LIST, CHAIN_LIST
+from src.transactions import get_normal_transactions
+from src.utils import WALLET_LIST, CHAIN_LIST
 
 import pandas as pd
 

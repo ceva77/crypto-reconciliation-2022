@@ -1,15 +1,15 @@
 import pandas as pd
 from datetime import date
 
-from scripts.transactions import (
+from src.transactions import (
     get_normal_transactions, 
     get_token_transfers, 
     get_internal_transactions, 
     merge_transactions_and_token_transfers
 )
-from scripts.lending.split import get_deposits_and_borrows
-from scripts.lending.filter import filter_deposits_and_withdrawals, filter_borrows_and_repayments, filter_split_txs
-from scripts.utils import CHAIN_LIST, WALLET_LIST, POOL_LIST
+from src.lending.split import get_deposits_and_borrows
+from src.lending.filter import filter_deposits_and_withdrawals, filter_borrows_and_repayments, filter_split_txs
+from src.utils import CHAIN_LIST, WALLET_LIST, POOL_LIST
 
 
 def build_lending_excel_sheet(_wallets, _pools, _chains, verbose=False):

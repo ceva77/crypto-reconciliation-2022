@@ -2,7 +2,7 @@ from datetime import datetime
 import pandas as pd
 import requests
 
-from scripts.utils import CHAINS, CHAIN_LIST, WALLET_LIST, wallet_address_to_name
+from src.utils import CHAINS, CHAIN_LIST, WALLET_LIST, wallet_address_to_name
 
 
 # get all "normal" transactions for a particular address on a given chain

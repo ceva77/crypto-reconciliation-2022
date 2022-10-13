@@ -65,6 +65,8 @@ def print_txs_by_account(_deposits_and_borrows):
 
     total_txs_check = 0
     total_txs = len(split_txs)
+
+    hash_list = pd.DataFrame()
     for wallet_name in wallets:
         for chain in chains:
             # filter frame for this wallet and chain only
@@ -74,9 +76,21 @@ def print_txs_by_account(_deposits_and_borrows):
             ]
             # output txs to separate csv if the filter is non-empty
             if not these_txs.empty:
+                these_hashes = these_txs[~these_txs.hash.str.contains("-dummy")].hash.unique().tolist()
+                i = 0
+                group_hashes = []
+                while i < len(these_hashes):
+                    group_hashes += [",".join(these_hashes[i:i+20])]
+                    i += 20
+
+                temp_hash_list = pd.DataFrame({f"{wallet_name} {chain}": group_hashes})
+                hash_list = pd.concat([hash_list, temp_hash_list])
+
                 these_txs = format_split_txs(these_txs)
                 these_txs.to_csv(f'output_files/split_txs/{wallet_name}_{chain}.csv', index=False)
                 total_txs_check += len(these_txs)
+
+    hash_list.to_csv("output_files/split_txs/hash_list.csv", index=False)
 
     # transactions added must equal total transactions in starting dataframe
     assert total_txs_check == total_txs
@@ -84,3 +98,7 @@ def print_txs_by_account(_deposits_and_borrows):
 
 def main():
     print_txs_by_account(deposits_and_borrows)
+
+
+if __name__ == "__main__":
+    main()

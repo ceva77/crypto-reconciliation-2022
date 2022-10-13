@@ -4,7 +4,7 @@ import pandas as pd
 map_action_to_type = {
     "withdraw_principal": "Deposit",
     "withdraw_interest": "Income",
-    "repay_principal": "Withdraw",
+    "repay_principal": "Withdrawal",
     "repay_interest": "Expense",
     "dummy_income": "Income",
     "gas_fee": "Expense"
@@ -107,7 +107,7 @@ def _handle_repay_principal(_tx):
     row = pd.DataFrame(
         [
             {
-                "type": "Withdraw",
+                "type": "Withdrawal",
                 "sub_type": "Crypto Loan Out",
                 "ref_data_exchange": "",
                 "asset": map_asset_to_assetcode[_tx.chain][_tx.tokenSymbol],

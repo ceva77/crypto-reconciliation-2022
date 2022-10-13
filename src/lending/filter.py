@@ -1,6 +1,6 @@
 import pandas as pd
 
-from scripts.lending.formatting import format_split_txs 
+from src.lending.formatting import format_split_txs 
 
 deposits_and_borrows = pd.read_csv("output_files/lending/deposits_and_borrows.csv")
 

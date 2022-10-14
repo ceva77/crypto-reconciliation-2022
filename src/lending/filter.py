@@ -76,7 +76,7 @@ def print_txs_by_account(_deposits_and_borrows):
             ]
             # output txs to separate csv if the filter is non-empty
             if not these_txs.empty:
-                these_hashes = these_txs[~these_txs.hash.str.contains("-dummy")].hash.unique().tolist()
+                these_hashes = these_txs.hash.unique().tolist()
                 i = 0
                 group_hashes = []
                 while i < len(these_hashes):
@@ -87,6 +87,7 @@ def print_txs_by_account(_deposits_and_borrows):
                 hash_list = pd.concat([hash_list, temp_hash_list])
 
                 these_txs = format_split_txs(these_txs)
+
                 these_txs.to_csv(f'output_files/split_txs/{wallet_name}_{chain}.csv', index=False)
                 total_txs_check += len(these_txs)
 

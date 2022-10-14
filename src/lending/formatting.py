@@ -1,4 +1,7 @@
 import pandas as pd
+import random
+
+from src.utils import WALLET_LIST
 
 
 map_action_to_type = {
@@ -69,11 +72,17 @@ map_asset_to_assetcode = {
 }
 
 
+def _is_tx_in(_tx) -> bool:
+    return _tx.transfer_to in WALLET_LIST
+
+
 def _handle_repay_interest(_tx):
+    type_ = "Income" if _is_tx_in(_tx) else "Expense"
+
     row = pd.DataFrame(
         [
             {
-                "type": "Expense",
+                "type": type_,
                 "sub_type": "Interest",
                 "ref_data_exchange": "",
                 "asset": map_asset_to_assetcode[_tx.chain][_tx.tokenSymbol],
@@ -85,7 +94,7 @@ def _handle_repay_interest(_tx):
                 "rebate_asset_amount": "",
                 "rate": "",
                 "txn_complete_ts": _tx.datetime.replace(" ", "T"),
-                "transaction_id": _tx.hash,
+                "transaction_id": f"{_tx.hash}-{random.random()}",
                 "order_id": "",
                 "from_address": _tx.transfer_from,
                 "to_address": _tx.transfer_to,
@@ -104,11 +113,18 @@ def _handle_repay_interest(_tx):
 
 
 def _handle_repay_principal(_tx):
+    if _is_tx_in(_tx):
+        type_ = "Deposit"
+        sub_type = "Crypto Loan In"
+    else:
+        type_ = "Withdrawal"
+        sub_type = "Crypto Loan Out"
+
     row = pd.DataFrame(
         [
             {
-                "type": "Withdrawal",
-                "sub_type": "Crypto Loan Out",
+                "type": type_,
+                "sub_type": sub_type,
                 "ref_data_exchange": "",
                 "asset": map_asset_to_assetcode[_tx.chain][_tx.tokenSymbol],
                 "amount": _tx.amount,
@@ -120,7 +136,7 @@ def _handle_repay_principal(_tx):
                 "rebate_asset_amount": "",
                 "rate": "",
                 "txn_complete_ts": _tx.datetime.replace(" ", "T"),
-                "transaction_id": _tx.hash,
+                "transaction_id": f"{_tx.hash}-{random.random()}",
                 "order_id": "",
                 "from_address": _tx.transfer_from,
                 "to_address": _tx.transfer_to,
@@ -139,10 +155,12 @@ def _handle_repay_principal(_tx):
 
 
 def _handle_withdraw_interest(_tx):
+    type_ = "Income" if _is_tx_in(_tx) else "Expense"
+
     row = pd.DataFrame(
         [
             {
-                "type": "Income",
+                "type": type_,
                 "sub_type": "Interest",
                 "ref_data_exchange": "",
                 "asset": map_asset_to_assetcode[_tx.chain][_tx.tokenSymbol],
@@ -155,7 +173,7 @@ def _handle_withdraw_interest(_tx):
                 "rebate_asset_amount": "",
                 "rate": "",
                 "txn_complete_ts": _tx.datetime.replace(" ", "T"),
-                "transaction_id": _tx.hash,
+                "transaction_id": f"{_tx.hash}-{random.random()}",
                 "order_id": "",
                 "from_address": _tx.transfer_from,
                 "to_address": _tx.transfer_to,
@@ -174,11 +192,18 @@ def _handle_withdraw_interest(_tx):
 
 
 def _handle_withdraw_principal(_tx):
+    if _is_tx_in(_tx):
+        type_ = "Deposit"
+        sub_type = "Crypto Loan In"
+    else:
+        type_ = "Withdrawal"
+        sub_type = "Crypto Loan Out"
+
     row = pd.DataFrame(
         [
             {
-                "type": "Deposit",
-                "sub_type": "Crypto Loan In",
+                "type": type_,
+                "sub_type": sub_type,
                 "ref_data_exchange": "",
                 "asset": map_asset_to_assetcode[_tx.chain][_tx.tokenSymbol],
                 "amount": _tx.amount,
@@ -190,7 +215,7 @@ def _handle_withdraw_principal(_tx):
                 "rebate_asset_amount": "",
                 "rate": "",
                 "txn_complete_ts": _tx.datetime.replace(" ", "T"),
-                "transaction_id": _tx.hash,
+                "transaction_id": f"{_tx.hash}-{random.random()}",
                 "order_id": "",
                 "from_address": _tx.transfer_from,
                 "to_address": _tx.transfer_to,
@@ -225,7 +250,7 @@ def _handle_dummy_income(_tx):
                 "rebate_asset_amount": "",
                 "rate": "",
                 "txn_complete_ts": _tx.datetime.replace(" ", "T"),
-                "transaction_id": _tx.hash,
+                "transaction_id": f"{_tx.hash}-{random.random()}",
                 "order_id": "",
                 "from_address": _tx.transfer_from,
                 "to_address": _tx.transfer_to,
@@ -260,7 +285,7 @@ def _handle_gas(_tx):
                 "rebate_asset_amount": "",
                 "rate": "",
                 "txn_complete_ts": _tx.datetime.replace(" ", "T"),
-                "transaction_id": _tx.hash,
+                "transaction_id": f"{_tx.hash}-{random.random()}",
                 "order_id": "",
                 "from_address": _tx.transfer_from,
                 "to_address": _tx.transfer_to,

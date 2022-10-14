@@ -414,7 +414,7 @@ def merge_transactions_and_token_transfers(_normal_transactions, _token_transfer
     return merged_transfers
 
 
-def main(verbose=False):
+def main():
     wallets = WALLET_LIST
     chains = CHAIN_LIST
 
@@ -424,20 +424,23 @@ def main(verbose=False):
     print("Getting token transfers")
     token_transfers = get_token_transfers(wallets, chains)
 
-    if verbose:
-        print(normal_transactions)
-        print(token_transfers)
+    print("Getting internal transactions")
+    internal_transactions = get_internal_transactions(wallets, chains)
 
-    return normal_transactions, token_transfers
+    print("Getting all transfers")
+    all_transfers = merge_transactions_and_token_transfers(normal_transactions, token_transfers, internal_transactions)
+
+    return normal_transactions, token_transfers, internal_transactions, all_transfers
 
 
 if __name__ == "__main__":
-    normal_transactions, token_transfers = main(verbose=True)
-    with pd.ExcelWriter("output_files/transactions.xlsx") as writer:
-        normal_transactions.to_excel(
-            writer, sheet_name="normal_transactions", index=False
-        )
-        token_transfers.to_excel(writer, sheet_name="token_transfers", index=False)
+    normal_transactions, token_transfers, internal_transactions, all_transfers = main()
+
+    normal_transactions.to_csv("output_files/normal_transactions.csv", index=False)
+    token_transfers.to_csv("output_files/token_transfers.csv", index=False)
+    internal_transactions.to_csv("output_files/internal_transactions.csv", index=False)
+    all_transfers.to_csv("output_files/all_transfers.csv", index=False)
+
 
 
 normal_transactions = pd.read_csv("output_files/normal_transactions.csv")

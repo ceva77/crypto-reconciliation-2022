@@ -446,7 +446,6 @@ def _add_dummy_transactions(_deposits_and_borrows):
     temp = variable_debt_txs['transfer_to']
     variable_debt_txs['transfer_to'] = variable_debt_txs['transfer_from']
     variable_debt_txs['transfer_from'] = temp
-    variable_debt_txs['hash'] = [f"{hash}-dummy" for hash in variable_debt_txs.hash]
 
     a_txs = _deposits_and_borrows[
         (_deposits_and_borrows['tokenSymbol'].isin(deposit_tokens))&
@@ -457,7 +456,6 @@ def _add_dummy_transactions(_deposits_and_borrows):
     temp = a_txs['transfer_to']
     a_txs['transfer_to'] = a_txs['transfer_from']
     a_txs['transfer_from'] = temp
-    a_txs['hash'] = [f"{hash}-dummy" for hash in a_txs.hash]
 
     _deposits_and_borrows = pd.concat([_deposits_and_borrows, variable_debt_txs, a_txs])
     _deposits_and_borrows.reset_index(drop=True, inplace=True)

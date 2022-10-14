@@ -76,14 +76,13 @@ def _is_tx_in(_tx) -> bool:
     return _tx.transfer_to in WALLET_LIST
 
 
-def _handle_repay_interest(_tx):
-    type_ = "Income" if _is_tx_in(_tx) else "Expense"
-
+def _make_row(_tx, _type, _sub_type, _notes):
+    
     row = pd.DataFrame(
         [
             {
-                "type": type_,
-                "sub_type": "Interest",
+                "type": _type,
+                "sub_type": _sub_type,
                 "ref_data_exchange": "",
                 "asset": map_asset_to_assetcode[_tx.chain][_tx.tokenSymbol],
                 "amount": _tx.amount,
@@ -102,14 +101,38 @@ def _handle_repay_interest(_tx):
                 "blockchain_transaction_id": _tx.hash,
                 "blockchain_address": _tx.wallet,
                 "counterparty": "",
-                "notes": "_repay_interest",
+                "notes": _notes,
                 "tags": "",
             }
-
         ]
     )
 
     return row
+
+
+
+def _handle_borrow(_tx):
+    type_ = "Deposit" if _is_tx_in(_tx) else "Withdrawal"
+    sub_type = "Crypto Loan In" if _is_tx_in(_tx) else "Crypto Loan Out"
+    notes = "_borrow"
+
+    return _make_row(_tx, type_, sub_type, notes)
+
+
+def _handle_deposit(_tx):
+    type_ = "Deposit" if _is_tx_in(_tx) else "Withdrawal"
+    sub_type = "Crypto Loan In" if _is_tx_in(_tx) else "Crypto Loan Out"
+    notes = "_lending_deposit"
+    
+    return _make_row(_tx, type_, sub_type, notes)
+
+
+def _handle_repay_interest(_tx):
+    type_ = "Income" if _is_tx_in(_tx) else "Expense"
+    sub_type = "Interest"
+    notes = "_repay_interest"
+
+    return _make_row(_tx, type_, sub_type, notes)
 
 
 def _handle_repay_principal(_tx):
@@ -119,76 +142,17 @@ def _handle_repay_principal(_tx):
     else:
         type_ = "Withdrawal"
         sub_type = "Crypto Loan Out"
+    notes = "_repay_principal"
 
-    row = pd.DataFrame(
-        [
-            {
-                "type": type_,
-                "sub_type": sub_type,
-                "ref_data_exchange": "",
-                "asset": map_asset_to_assetcode[_tx.chain][_tx.tokenSymbol],
-                "amount": _tx.amount,
-                "counter_asset_code": "",
-                "counter_asset_amount": "",
-                "fee_asset_code": "",
-                "fee_asset_amount": "", 
-                "rebate_asset_code": "",
-                "rebate_asset_amount": "",
-                "rate": "",
-                "txn_complete_ts": _tx.datetime.replace(" ", "T"),
-                "transaction_id": f"{_tx.hash}-{random.random()}",
-                "order_id": "",
-                "from_address": _tx.transfer_from,
-                "to_address": _tx.transfer_to,
-                "contract_address": _tx.pool,
-                "blockchain_transaction_id": _tx.hash,
-                "blockchain_address": _tx.wallet,
-                "counterparty": "",
-                "notes": "_repay_principal",
-                "tags": "",
-            }
-
-        ]
-    )
-
-    return row
+    return _make_row(_tx, type_, sub_type, notes)
 
 
 def _handle_withdraw_interest(_tx):
     type_ = "Income" if _is_tx_in(_tx) else "Expense"
+    sub_type = "Interest"
+    notes = "_withdraw_interest"
 
-    row = pd.DataFrame(
-        [
-            {
-                "type": type_,
-                "sub_type": "Interest",
-                "ref_data_exchange": "",
-                "asset": map_asset_to_assetcode[_tx.chain][_tx.tokenSymbol],
-                "amount": _tx.amount,
-                "counter_asset_code": "",
-                "counter_asset_amount": "",
-                "fee_asset_code": "",
-                "fee_asset_amount": "", 
-                "rebate_asset_code": "",
-                "rebate_asset_amount": "",
-                "rate": "",
-                "txn_complete_ts": _tx.datetime.replace(" ", "T"),
-                "transaction_id": f"{_tx.hash}-{random.random()}",
-                "order_id": "",
-                "from_address": _tx.transfer_from,
-                "to_address": _tx.transfer_to,
-                "contract_address": _tx.pool,
-                "blockchain_transaction_id": _tx.hash,
-                "blockchain_address": _tx.wallet,
-                "counterparty": "",
-                "notes": "_withdraw_interest",
-                "tags": "",
-            }
-
-        ]
-    )
-
-    return row
+    return _make_row(_tx, type_, sub_type, notes)
 
 
 def _handle_withdraw_principal(_tx):
@@ -198,78 +162,21 @@ def _handle_withdraw_principal(_tx):
     else:
         type_ = "Withdrawal"
         sub_type = "Crypto Loan Out"
+    notes = "_withdraw_principal"
 
-    row = pd.DataFrame(
-        [
-            {
-                "type": type_,
-                "sub_type": sub_type,
-                "ref_data_exchange": "",
-                "asset": map_asset_to_assetcode[_tx.chain][_tx.tokenSymbol],
-                "amount": _tx.amount,
-                "counter_asset_code": "",
-                "counter_asset_amount": "",
-                "fee_asset_code": "",
-                "fee_asset_amount": "", 
-                "rebate_asset_code": "",
-                "rebate_asset_amount": "",
-                "rate": "",
-                "txn_complete_ts": _tx.datetime.replace(" ", "T"),
-                "transaction_id": f"{_tx.hash}-{random.random()}",
-                "order_id": "",
-                "from_address": _tx.transfer_from,
-                "to_address": _tx.transfer_to,
-                "contract_address": _tx.pool,
-                "blockchain_transaction_id": _tx.hash,
-                "blockchain_address": _tx.wallet,
-                "counterparty": "",
-                "notes": "_withdraw_principal",
-                "tags": "",
-            }
-
-        ]
-    )
-
-    return row
+    return _make_row(_tx, type_, sub_type, notes)
 
 
 def _handle_dummy_income(_tx):
-    row = pd.DataFrame(
-        [
-            {
-                "type": "Income",
-                "sub_type": "Interest",
-                "ref_data_exchange": "",
-                "asset": map_asset_to_assetcode[_tx.chain][_tx.tokenSymbol],
-                "amount": _tx.amount,
-                "counter_asset_code": "",
-                "counter_asset_amount": "",
-                "fee_asset_code": "",
-                "fee_asset_amount": "", 
-                "rebate_asset_code": "",
-                "rebate_asset_amount": "",
-                "rate": "",
-                "txn_complete_ts": _tx.datetime.replace(" ", "T"),
-                "transaction_id": f"{_tx.hash}-{random.random()}",
-                "order_id": "",
-                "from_address": _tx.transfer_from,
-                "to_address": _tx.transfer_to,
-                "contract_address": _tx.pool,
-                "blockchain_transaction_id": _tx.hash,
-                "blockchain_address": _tx.wallet,
-                "counterparty": "",
-                "notes": "_dummy_income",
-                "tags": "",
-            }
+    type_ = "Income"
+    sub_type = "Interest"
+    notes = "_dummy_income"
 
-        ]
-    )
-
-    return row
+    return _make_row(_tx, type_, sub_type, notes)
 
 
 def _handle_gas(_tx):
-    row = pd.DataFrame(
+    return pd.DataFrame(
         [
             {
                 "type": "Expense",
@@ -296,9 +203,29 @@ def _handle_gas(_tx):
                 "notes": "gas",
                 "tags": "",
             }
-
         ]
     )
+
+
+def _handle_tx(_tx):
+    if _tx.action == 'deposit':
+        row = _handle_deposit(_tx)
+    elif _tx.action == 'borrow':
+        row = _handle_borrow(_tx)
+    elif _tx.action == 'repay_interest':
+        row = _handle_repay_interest(_tx)
+    elif _tx.action == 'repay_principal':
+        row = _handle_repay_principal(_tx)
+    elif _tx.action == 'withdraw_interest':
+        row = _handle_withdraw_interest(_tx)
+    elif _tx.action == 'withdraw_principal':
+        row = _handle_withdraw_principal(_tx)
+    elif _tx.action == 'dummy_income':
+        row = _handle_dummy_income(_tx)
+    elif _tx.action == 'gas_fee':
+        row = _handle_gas(_tx)
+    else:
+        raise Exception(f"Transaction action {_tx.action} not recognized")
 
     return row
 
@@ -307,21 +234,8 @@ def _handle_gas(_tx):
 def format_split_txs(split_txs):
     formatted_txs = pd.DataFrame()
 
-    for _, tx in split_txs.iterrows():
-        if tx.action == 'repay_interest':
-            row = _handle_repay_interest(tx)
-        elif tx.action == 'repay_principal':
-            row = _handle_repay_principal(tx)
-        elif tx.action == 'withdraw_interest':
-            row = _handle_withdraw_interest(tx)
-        elif tx.action == 'withdraw_principal':
-            row = _handle_withdraw_principal(tx)
-        elif tx.action == 'dummy_income':
-            row = _handle_dummy_income(tx)
-        elif tx.action == 'gas_fee':
-            row = _handle_gas(tx)
-        else:
-            raise Exception(f"Transaction action {tx.action} not recognized")
+    for _, tx in split_txs.iterrows(): 
+        row = _handle_tx(tx)
         
         formatted_txs = pd.concat([formatted_txs, row])
 

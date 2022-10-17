@@ -44,7 +44,7 @@ def filter_borrows_and_repayments(_deposits_and_borrows):
 def filter_split_txs(_deposits_and_borrows):
     # only transactions with these actions need to be edited
     tx_types = [
-        'repay_principal','repay_interest','dummy_income','withdraw_principal','withdraw_interest'
+        'deposit','borrow','repay_principal','repay_interest','dummy_income','withdraw_principal','withdraw_interest'
     ]
     split_txs = _deposits_and_borrows[_deposits_and_borrows.action.isin(tx_types)].copy()
 

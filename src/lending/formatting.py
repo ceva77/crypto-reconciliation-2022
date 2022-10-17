@@ -89,6 +89,7 @@ def _make_row(_tx, _type, _sub_type, _notes):
                 "counter_asset_code": "",
                 "counter_asset_amount": "",
                 "fee_asset_code": "",
+                "fee_asset_amount": "",
                 "rebate_asset_code": "",
                 "rebate_asset_amount": "",
                 "rate": "",

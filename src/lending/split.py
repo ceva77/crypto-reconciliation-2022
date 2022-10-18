@@ -1,6 +1,6 @@
 import pandas as pd
 
-from src.utils import POOL_LIST, CHAINS
+from src.utils import POOL_LIST, CHAINS, h_POOL_LIST
 
 all_transfers = pd.read_csv("output_files/all_transfers.csv")
 deposit_tokens = [
@@ -45,7 +45,7 @@ def _is_borrow(_tx):
 
 
 def _is_repay(_tx):
-    return _tx.action in ['repay','repayETH']
+    return _tx.action in ['repay','repayETH','repayBorrow']
 
 
 def _handle_deposit(_tx, _temp_deposits, _temp_withdraws, _temp_interest):
@@ -565,7 +565,9 @@ def get_deposits_and_borrows(_transfers, _pools):
                             temp_repayments, 
                             temp_borrow_interest
                         )
-
+                    else:
+                        print(f"tx type '{tx.action}' not recognized")
+                        continue
 
                     deposits_and_borrows = pd.concat([deposits_and_borrows, row])
 

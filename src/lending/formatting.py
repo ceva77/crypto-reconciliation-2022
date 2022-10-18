@@ -62,12 +62,16 @@ map_asset_to_assetcode = {
             'variableDebtCRV': 'VARIABLEDEBTCRV', 
             'variableDebtSUSD': 'VARIABLEDEBTSUSD', 
             'variableDebtUSDT': 'VARIABLEDEBTUSDT', 
-            'xSUSHI': 'XSUSHI'
+            'xSUSHI': 'XSUSHI',
+            'ibEUR': 'IBEUR',
+            'ibGBP': 'IBGBP',
         }, 
     'fantom': 
         {
             'FTM': 'FTM1', 
-            'gFTM': 'GFTM'
+            'gFTM': 'GFTM',
+            'USDC': 'USDC6',
+            'FRAX': 'FFRAX'
         }
 }
 

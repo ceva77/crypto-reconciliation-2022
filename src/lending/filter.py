@@ -1,4 +1,5 @@
 import pandas as pd
+from datetime import datetime
 
 from src.lending.formatting import format_split_txs 
 
@@ -56,7 +57,7 @@ def filter_split_txs(_deposits_and_borrows):
 
 
 # split txs by accounts between wallets and chain to match lukka system for accounts
-def print_txs_by_account(_deposits_and_borrows):
+def print_txs_by_account(_deposits_and_borrows, _output_dir="output_files/split_txs"):
     split_txs = filter_split_txs(_deposits_and_borrows)
 
     # get all wallets and chains
@@ -88,10 +89,10 @@ def print_txs_by_account(_deposits_and_borrows):
 
                 these_txs = format_split_txs(these_txs)
 
-                these_txs.to_csv(f'output_files/split_txs/{wallet_name}_{chain}.csv', index=False)
+                these_txs.to_csv(f'{_output_dir}/{wallet_name}_{chain}.csv', index=False)
                 total_txs_check += len(these_txs)
 
-    hash_list.to_csv("output_files/split_txs/hash_list.csv", index=False)
+    hash_list.to_csv(f"{_output_dir}/hash_list.csv", index=False)
 
     # transactions added must equal total transactions in starting dataframe
     assert total_txs_check == total_txs

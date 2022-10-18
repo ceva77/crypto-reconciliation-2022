@@ -172,6 +172,14 @@ for chain in CHAIN_LIST:
     for pool in CHAINS[chain]['pools']:
         POOL_LIST.append(pool)
 POOL_LIST = [pool.lower() for pool in POOL_LIST]
+h_POOLS = {
+    "hFRX":'0xb4300e088a3ae4e624ee5c71bc1822f68bb5f2bc',
+    "iGBP":'0xecab2c76f1a8359a06fab5fa0ceea51280a97ecf',
+    "crCRV": '0xc7fd8dcee4697ceef5a2fd4608a7bd6a94c77480',
+    "cylBEUR": '0x00e5c0774a5f065c285068170b20393925c84bf3',
+    "hUSDC": '0x243e33aa7f6787154a8e59d3c27a66db3f8818ee',
+}
+h_POOL_LIST = [pool.lower() for pool in h_POOLS.values()]
 
 TEST_WALLET = WALLET_LIST[11]
 TEST_POOL = CHAINS["polygon"]["v2_pool"]

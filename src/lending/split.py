@@ -1,6 +1,6 @@
 import pandas as pd
 
-from src.utils import POOL_LIST, CHAINS, h_POOL_LIST
+from src.utils import POOL_LIST, CHAINS, h_POOL_LIST, generic_vault_list, qi_dao_vaults
 
 all_transfers = pd.read_csv("output_files/all_transfers.csv")
 deposit_tokens = [
@@ -33,19 +33,19 @@ action_categories = {
 
 
 def _is_deposit(_tx):
-    return _tx.action in ['deposit','depositETH','supply','supplyETH']
+    return _tx.action in ['deposit','depositETH','supply','supplyETH','depositAll','depositCollateral']
 
 
 def _is_withdraw(_tx):
-    return _tx.action in ['withdraw','withdrawETH']
+    return _tx.action in ['withdraw','withdrawETH','withdrawAll','withdrawCollateral']
 
 
 def _is_borrow(_tx):
-    return _tx.action in ['borrow','borrowETH']
+    return _tx.action in ['borrow','borrowETH','borrowToken']
 
 
 def _is_repay(_tx):
-    return _tx.action in ['repay','repayETH','repayBorrow']
+    return _tx.action in ['repay','repayETH','repayBorrow','payBackToken']
 
 
 def _handle_deposit(_tx, _temp_deposits, _temp_withdraws, _temp_interest):

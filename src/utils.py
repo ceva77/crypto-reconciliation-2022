@@ -181,6 +181,23 @@ h_POOLS = {
 }
 h_POOL_LIST = [pool.lower() for pool in h_POOLS.values()]
 
+generic_vaults = {
+    'SLP': '0x639867d57f5e1f0a7693db3b5ffac1c405383ef4',
+    'WLP': '0x8fb8b80ccd15912b8878d41f4c30a8414fe61385',
+    'UNI': '0x876801319ee837dbc494f6b1d87b73ff2fb80c25',
+    'UNI2': '0x80506dbe1fe9dabbd3f4d92fc1cba4866131bf82',
+    'UNI3': '0x2842d8ae8a7dd89c0107f02f1e0e1db50103ca2e',
+    'SLP2': '0x2F46E1E538FC0fac11bC15eBd53A66746E392A6e',
+    'SLP3': '0xc1bdbf2457e0b7f237cc0f922ca4b45e8723f35a',
+    'SLP4': '0x22056d0c8e5d83c6ffefa6f363056833ce92cf09',
+    'SLP5': '0xb992d8ed162696d2b8022bcf61e9f630a0d0ad9d',
+    'SLP6': '0xecbc229e22821b3f33e9cde25d39cbf35824165b',
+    'LooksRare': '0xbcd7254a1d759efa08ec7c3291b2e85c5dcc12ce',
+}
+generic_vault_list = [pool.lower() for pool in generic_vaults.values()]
+
+qi_dao_vaults = ['0xa3Fa99A148fA48D14Ed51d610c367C61876997F1'.lower()]
+
 TEST_WALLET = WALLET_LIST[11]
 TEST_POOL = CHAINS["polygon"]["v2_pool"]
 TEST_CHAIN = "polygon"

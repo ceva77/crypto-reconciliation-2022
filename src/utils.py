@@ -201,3 +201,12 @@ qi_dao_vaults = ['0xa3Fa99A148fA48D14Ed51d610c367C61876997F1'.lower()]
 TEST_WALLET = WALLET_LIST[11]
 TEST_POOL = CHAINS["polygon"]["v2_pool"]
 TEST_CHAIN = "polygon"
+
+# {key: key: value}
+# {from_chain: to_chain: address}
+BRIDGES = {
+    'mainnet': {
+        'polygon': '0xa0c68c638235ee32657e8f720a23cec1bfc77c77',
+        'avalanche': '0xe78388b4ce79068e89bf8aa7f218ef6b9ab0e9d0',
+    },
+}

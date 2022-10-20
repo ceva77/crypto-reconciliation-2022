@@ -3,6 +3,7 @@ import pandas as pd
 from src.utils import POOL_LIST, CHAINS, h_POOL_LIST, generic_vault_list, qi_dao_vaults
 
 all_transfers = pd.read_csv("output_files/all_transfers.csv")
+# rebasing tokens representing deposit positions on AAVE
 deposit_tokens = [
     "bAVAX",
     "gFTM",
@@ -20,6 +21,7 @@ deposit_tokens = [
     "aYFI",
     "amWETH",
 ]
+# for sorting tx's later
 action_categories = {
     "deposit": 0,
     "withdraw_principal": 0,

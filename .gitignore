@@ -8,3 +8,4 @@ scripts/internal_transfers/__pycache__
 build/
 reports/
 output_files/
+.ipynb_checkpoints/

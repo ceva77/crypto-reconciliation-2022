@@ -14,13 +14,16 @@ def get_normal_transactions_by_wallet(
     api_key = CHAINS[chain]["explorer_token"]
 
     url = (
-        "{}?module=account&action=txlist&address={}&startblock={}&endblock={}&apikey={}"
+        "{}?module=account&action=txlist&address={}&startblock={}&endblock={} \
+        &apikey={}"
     )
     url = url.format(base_url, wallet, start_block, end_block, api_key)
 
     response = requests.get(url).json()
     if response["status"] == "1":
         df = pd.DataFrame(response["result"])
+        if len(df) == 10_000:
+            raise Exception("Max records received on this request")
         df = df[df['isError'] != '1']
         columns_str_to_int = [
             "blockNumber",
@@ -42,7 +45,7 @@ def get_normal_transactions_by_wallet(
         df["wallet_name"] = wallet_address_to_name[wallet]
         df["chain"] = chain
         df.loc[:, ("to")] = [to.lower() for to in df["to"]]
-        
+
         # remove reverted transactions
         df.reset_index(drop=True, inplace=True)
 
@@ -88,7 +91,8 @@ def get_internal_transactions_by_wallet(
     api_key = CHAINS[chain]["explorer_token"]
 
     url = (
-        "{}?module=account&action=txlistinternal&address={}&startblock={}&endblock={}&apikey={}"
+        "{}?module=account&action=txlistinternal&address={}&startblock={} \
+                &endblock={}&apikey={}"
     )
     url = url.format(base_url, wallet, start_block, end_block, api_key)
 
@@ -96,12 +100,23 @@ def get_internal_transactions_by_wallet(
 
     if response["status"] == "1":
         df = pd.DataFrame(response["result"])
+        if len(df) == 10_000:
+            raise Exception("Max records received on this request")
         df = df[df['isError'] != '1']
         df['wallet'] = wallet.lower()
         df['wallet_name'] = wallet_address_to_name[wallet]
         df['chain'] = chain
 
-        empty_columns_to_add = ['nonce','blockHash','transactionIndex','gasPrice','txreceipt_status','cumulativeGasUsed','confirmations','methodId','functionName']
+        empty_columns_to_add = [
+            'nonce',
+            'blockHash',
+            'transactionIndex',
+            'gasPrice',
+            'txreceipt_status',
+            'cumulativeGasUsed',
+            'confirmations',
+            'methodId',
+            'functionName']
         for column in empty_columns_to_add:
             df[column] = ''
 
@@ -163,15 +178,21 @@ def get_token_transfers_by_wallet(
     api_key = CHAINS[chain]["explorer_token"]
 
     if token:
-        url = "{}?module=account&action=tokentx&contractaddress={}&address={}&startblock={}&endblock={}&apikey={}"
-        url = url.format(base_url, token, wallet, start_block, end_block, api_key)
+        url = "{}?module=account&action=tokentx&contractaddress={}&address={} \
+                &startblock={}&endblock={}&apikey={}"
+        url = url.format(
+                base_url, token, wallet, start_block, end_block, api_key
+            )
     else:
-        url = "{}?module=account&action=tokentx&address={}&startblock={}&endblock={}&apikey={}"
+        url = "{}?module=account&action=tokentx&address={}&startblock={}& \
+                endblock={}&apikey={}"
         url = url.format(base_url, wallet, start_block, end_block, api_key)
 
     response = requests.get(url).json()
     if response["status"] == "1":
         df = pd.DataFrame(response["result"])
+        if len(df) == 10_000:
+            raise Exception("Max records received on this request")
         columns_str_to_int = [
             "blockNumber",
             "timeStamp",
@@ -237,7 +258,9 @@ def get_normal_transactions(_wallets, _chains):
         for chain in _chains:
             print(f"{wallet_address_to_name[wallet]}, {chain}")
             normal_transactions = pd.concat(
-                [normal_transactions, get_normal_transactions_by_wallet(wallet, chain)]
+                [normal_transactions, get_normal_transactions_by_wallet(
+                    wallet, chain)
+                 ]
             )
 
     normal_transactions.reset_index(drop=True, inplace=True)
@@ -274,8 +297,12 @@ def get_internal_transactions(_wallets, _chains):
     for wallet in _wallets:
         for chain in _chains:
             print(f"{wallet_address_to_name[wallet]}, {chain}")
-            temp_transactions = get_internal_transactions_by_wallet(wallet, chain)
-            internal_transactions = pd.concat([internal_transactions, temp_transactions])
+            temp_transactions = get_internal_transactions_by_wallet(
+                    wallet, chain
+                )
+            internal_transactions = pd.concat(
+                    [internal_transactions, temp_transactions]
+                )
 
     internal_transactions.reset_index(drop=True, inplace=True)
     return internal_transactions.copy()
@@ -292,34 +319,72 @@ def get_all_tokens_interacted_with(wallets, chains):
     return tokens[["tokenSymbol", "tokenName", "contractAddress"]]
 
 
-# format transactions where raw eth was exchanged into same format as erc20 transfers
+# format transactions so that raw eth is same format as erc20 transfers
 def get_raw_transfers(_normal_transactions, _internal_transactions):
-    combined_transactions = pd.concat([_normal_transactions, _internal_transactions])
-    combined_transactions.loc[:,('value')] = [int(value) for value in combined_transactions['value']]
-    plus_value_transactions = combined_transactions[combined_transactions['value'] > 0].copy() 
+    combined_transactions = pd.concat(
+            [_normal_transactions, _internal_transactions]
+        )
+    combined_transactions.loc[:, ('value')] = [
+            int(value) for value in combined_transactions['value']
+        ]
+    plus_value_transactions = combined_transactions[
+            combined_transactions['value'] > 0].copy()
 
     plus_value_transactions.reset_index(drop=True, inplace=True)
-    plus_value_chains = plus_value_transactions.loc[:,("chain")]
-    plus_value_transactions.loc[:,('tokenName')] = [CHAINS[chain]["base_token_name"] for chain in plus_value_chains] 
-    plus_value_transactions.loc[:,('tokenSymbol')] = [CHAINS[chain]["base_token_symbol"] for chain in plus_value_chains]
-    plus_value_transactions.loc[:,('tokenDecimal')] = [CHAINS[chain]["base_token_decimals"] for chain in plus_value_chains]
-    
-    plus_value_transactions = plus_value_transactions.loc[:,
-        ("blockNumber","timeStamp","hash","nonce","blockHash","from","contractAddress","to","value","tokenName","tokenSymbol","tokenDecimal","transactionIndex","gas","gasPrice","gasUsed","cumulativeGasUsed","input","confirmations","wallet","wallet_name","chain")
-    ]
+    plus_value_chains = plus_value_transactions.loc[:, ("chain")]
+    plus_value_transactions.loc[:, ('tokenName')] = [
+            CHAINS[chain]["base_token_name"] for chain in plus_value_chains
+        ]
+    plus_value_transactions.loc[:, ('tokenSymbol')] = [
+            CHAINS[chain]["base_token_symbol"] for chain in plus_value_chains
+        ]
+    plus_value_transactions.loc[:, ('tokenDecimal')] = [
+            CHAINS[chain]["base_token_decimals"] for chain in plus_value_chains
+        ]
+
+    plus_value_transactions = plus_value_transactions.loc[:, (
+                "blockNumber",
+                "timeStamp",
+                "hash",
+                "nonce",
+                "blockHash",
+                "from",
+                "contractAddress",
+                "to",
+                "value",
+                "tokenName",
+                "tokenSymbol",
+                "tokenDecimal",
+                "transactionIndex",
+                "gas",
+                "gasPrice",
+                "gasUsed",
+                "cumulativeGasUsed",
+                "input",
+                "confirmations",
+                "wallet",
+                "wallet_name",
+                "chain"
+            )
+        ]
 
     return plus_value_transactions
 
 
 # merge transactions with all token and raw eth transfers
 # reformat columns to remove duplicate columns
-def merge_transactions_and_token_transfers(_normal_transactions, _token_transfers, _internal_transactions):
-    raw_transfers = get_raw_transfers(_normal_transactions, _internal_transactions)
+def merge_transactions_and_token_transfers(
+        _normal_transactions, _token_transfers, _internal_transactions
+):
+    raw_transfers = get_raw_transfers(
+            _normal_transactions, _internal_transactions
+        )
     token_transfers = pd.concat([_token_transfers, raw_transfers])
     token_transfers.reset_index(drop=True, inplace=True)
 
     merged_transfers = token_transfers.merge(
-        _normal_transactions, how="left", on=["hash","wallet"], suffixes=(None, "_tx")
+        _normal_transactions, how="left", on=["hash", "wallet"],
+        suffixes=(None, "_tx")
     )
 
     merged_transfers = merged_transfers[

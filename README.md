@@ -18,6 +18,3 @@ We use the Etherscan API to programmatically inspect, filter, and sort our trans
 
 We used the Etherscan API (and the like for other EVM-chains) in order to track and label internal transactions (raw ETH sends and ERC20 transfers between our various wallets). Largely, this process is complete for now as we've successfully identified and labeled within the Lukka system all of our internal transfers. This was an issue as the Lukka system does not automatically to / from fields for an arbitrary transaction, and therefore was unable to mark when we sent funds between our own wallets.
 
-
-
-Testing an update to the README

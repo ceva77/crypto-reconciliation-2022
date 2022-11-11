@@ -14,73 +14,73 @@ map_action_to_type = {
 }
 
 map_asset_to_assetcode = {
-    'polygon': 
+    'polygon':
         {
-            'AAVE': 'AAVE1', 
+            'AAVE': 'AAVE1',
             'ADDY': 'ADDY',
-            'DAI': 'DAI2', 
+            'DAI': 'DAI2',
             'LITHIUM': 'LITHIUM',
             'MYFRIENDS': 'MYFRIENDS',
             'ARCADIUM': 'ARCADIUM',
             'MIM-3LP3CRV-f': 'MIM3LP3RCVFGAUGE',
-            'MATIC': 'MATIC1', 
-            'SUSHI': 'SUSHI3', 
-            'USDC': 'USDC1', 
-            'USDT': 'USDT1', 
-            'WBTC': 'WBTC2', 
-            'WETH': 'WETH2', 
+            'MATIC': 'MATIC1',
+            'SUSHI': 'SUSHI3',
+            'USDC': 'USDC1',
+            'USDT': 'USDT1',
+            'WBTC': 'WBTC2',
+            'WETH': 'WETH2',
             'SLP': 'SLP6D',
             'WLP': 'WLP',
             'UNI-V2': 'UNIV2AF',
-            'aPolSUSHI': 'APOLSUSHI', 
-            'amAAVE': 'AMAAVE', 
-            'amDAI': 'AMDAI', 
-            'amUSDC': 'AMUSDC', 
-            'amUSDT': 'AMUSDT', 
-            'amWBTC': 'AMWBTC', 
-            'amWETH': 'AMWETH', 
-            'amWMATIC': 'AMWMATIC', 
-            'variableDebtmUSDC': 'VARIABLEDEBTMUSDC', 
-            'variableDebtmUSDT': 'VARIABLEDEBTMUSDT', 
+            'aPolSUSHI': 'APOLSUSHI',
+            'amAAVE': 'AMAAVE',
+            'amDAI': 'AMDAI',
+            'amUSDC': 'AMUSDC',
+            'amUSDT': 'AMUSDT',
+            'amWBTC': 'AMWBTC',
+            'amWETH': 'AMWETH',
+            'amWMATIC': 'AMWMATIC',
+            'variableDebtmUSDC': 'VARIABLEDEBTMUSDC',
+            'variableDebtmUSDT': 'VARIABLEDEBTMUSDT',
             'variableDebtmWMATIC': 'VARIABLEDEBTMWMATIC'
-        }, 
-    'avalanche': 
+        },
+    'avalanche':
         {
-            'AVAX': 'AVAX', 
-            'bAVAX': 'BAVAX', 
+            'AVAX': 'AVAX',
+            'bAVAX': 'BAVAX',
             'variableDebtgAVAX': 'VARIABLEDEBTGAVAX'
         },
-    'mainnet': 
+    'mainnet':
         {
             'BMI': 'BMI1',
-            'CRV': 'CRV', 
-            'CVX': 'CVX', 
-            'ETH': 'ETH', 
+            'CRV': 'CRV',
+            'CVX': 'CVX',
+            'ETH': 'ETH',
             'WETH': 'WETH',
-            'LINK': 'LINK', 
+            'LINK': 'LINK',
             'LOOKS': 'LOOKS',
             'MIM-3LP3CRV-f': 'MIM3LP3RCVFGAUGE',
-            'USDC': 'USDC', 
-            'USDT': 'USDT', 
-            'YFI': 'YFI', 
-            'aCRV': 'ACRV', 
-            'aCVX': 'ACVX', 
-            'aLINK': 'ALINK1', 
-            'aUSDC': 'AUSDC1', 
-            'aUSDT': 'AUSDT1', 
-            'aXSUSHI': 'AXSUSHI', 
-            'aYFI': 'AYFI1', 
-            'sUSD': 'NUSD', 
-            'variableDebtCRV': 'VARIABLEDEBTCRV', 
-            'variableDebtSUSD': 'VARIABLEDEBTSUSD', 
-            'variableDebtUSDT': 'VARIABLEDEBTUSDT', 
+            'USDC': 'USDC',
+            'USDT': 'USDT',
+            'YFI': 'YFI',
+            'aCRV': 'ACRV',
+            'aCVX': 'ACVX',
+            'aLINK': 'ALINK1',
+            'aUSDC': 'AUSDC1',
+            'aUSDT': 'AUSDT1',
+            'aXSUSHI': 'AXSUSHI',
+            'aYFI': 'AYFI1',
+            'sUSD': 'NUSD',
+            'variableDebtCRV': 'VARIABLEDEBTCRV',
+            'variableDebtSUSD': 'VARIABLEDEBTSUSD',
+            'variableDebtUSDT': 'VARIABLEDEBTUSDT',
             'xSUSHI': 'XSUSHI',
             'ibEUR': 'IBEUR',
             'ibGBP': 'IBGBP',
-        }, 
-    'fantom': 
+        },
+    'fantom':
         {
-            'FTM': 'FTM1', 
+            'FTM': 'FTM1',
             'gFTM': 'GFTM',
             'USDC': 'USDC6',
             'FRAX': 'FFRAX'
@@ -93,7 +93,6 @@ def _is_tx_in(_tx) -> bool:
 
 
 def _make_row(_tx, _type, _sub_type, _notes):
-    
     row = pd.DataFrame(
         [
             {
@@ -125,7 +124,6 @@ def _make_row(_tx, _type, _sub_type, _notes):
     )
 
     return row
-
 
 
 def _handle_borrow(_tx):
